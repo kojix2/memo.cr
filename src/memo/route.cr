@@ -45,6 +45,9 @@ module Memo
     Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
       env.params.body["title"].to_s, env.params.body["body"].to_s, now, id
     env.redirect "/"
+  rescue ex
+    env.response.status_code = 400
+    "Error: #{ex.message}"
   end
 
   post "/notes/:id/delete" do |env|
