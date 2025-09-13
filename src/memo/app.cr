@@ -9,7 +9,7 @@ module Memo
 
     def run
       spawn do
-        Kemal.run(port: @port)
+        Kemal.run(port: @port, trap_signal: true)
       end
 
       sleep 1.second # Wait for server to start

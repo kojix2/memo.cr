@@ -1,0 +1,138 @@
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h1>Notes</h1>
+        <button class="new-note-btn" onclick="createNewNote()">+ New Note</button>
+    </div>
+    <div class="notes-list">
+        <% notes.each_with_index do |(id, title, body, created_at, updated_at), index| %>
+            <div class="note-item <%= "active" if index == 0 %>" onclick="selectNote(<%= id %>)">
+                <div class="note-title"><%= HTML.escape(title.empty? ? "Untitled" : title) %></div>
+                <div class="note-preview"><%= HTML.escape(body.size > 50 ? body[0..50] + "..." : body) %></div>
+                <div class="note-date"><%= HTML.escape(updated_at.split(" ")[0]) %></div>
+            </div>
+        <% end %>
+        <% if notes.empty? %>
+            <div class="note-item">
+                <div class="note-title">No notes yet</div>
+                <div class="note-preview">Create your first note</div>
+            </div>
+        <% end %>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <% if notes.empty? %>
+        <div class="empty-state">
+            Select a note to start editing
+        </div>
+    <% else %>
+        <% first_note = notes.first %>
+        <div class="editor-header">
+            <input type="text" class="editor-title" id="note-title" 
+                   value="<%= HTML.escape(first_note[1]) %>" 
+                   placeholder="Note title">
+        </div>
+        <div class="editor-content">
+            <textarea class="editor-textarea" id="note-body" 
+                      placeholder="Start writing..."><%= HTML.escape(first_note[2]) %></textarea>
+        </div>
+        <div class="editor-actions">
+            <button class="btn" onclick="saveNote(<%= first_note[0] %>)">Save</button>
+            <button class="btn btn-delete" onclick="deleteNote(<%= first_note[0] %>)">Delete</button>
+        </div>
+    <% end %>
+</div>
+
+<script>
+let currentNoteId = <%= notes.empty? ? "null" : notes.first[0] %>;
+
+function selectNote(noteId) {
+    // Remove active class from all notes
+    document.querySelectorAll('.note-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Add active class to clicked note
+    event.target.closest('.note-item').classList.add('active');
+    
+    // Load note content (for now, we'll just redirect)
+    window.location.href = '/?note=' + noteId;
+}
+
+function createNewNote() {
+    const title = prompt('Note title:') || 'Untitled';
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/notes';
+    form.style.display = 'none';
+    
+    const titleInput = document.createElement('input');
+    titleInput.name = 'title';
+    titleInput.value = title;
+    
+    const bodyInput = document.createElement('input');
+    bodyInput.name = 'body';
+    bodyInput.value = '';
+    
+    form.appendChild(titleInput);
+    form.appendChild(bodyInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function saveNote(noteId) {
+    const title = document.getElementById('note-title').value;
+    const body = document.getElementById('note-body').value;
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/notes/' + noteId + '/update';
+    form.style.display = 'none';
+    
+    const titleInput = document.createElement('input');
+    titleInput.name = 'title';
+    titleInput.value = title;
+    
+    const bodyInput = document.createElement('input');
+    bodyInput.name = 'body';
+    bodyInput.value = body;
+    
+    form.appendChild(titleInput);
+    form.appendChild(bodyInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function deleteNote(noteId) {
+    if (confirm('Delete this note?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/notes/' + noteId + '/delete';
+        form.style.display = 'none';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Auto-save functionality
+let saveTimeout;
+function autoSave() {
+    if (currentNoteId) {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveNote(currentNoteId);
+        }, 2000);
+    }
+}
+
+// Add auto-save listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.getElementById('note-title');
+    const bodyTextarea = document.getElementById('note-body');
+    
+    if (titleInput) titleInput.addEventListener('input', autoSave);
+    if (bodyTextarea) bodyTextarea.addEventListener('input', autoSave);
+});
+</script>

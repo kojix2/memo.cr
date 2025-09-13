@@ -1,6 +1,7 @@
 # src/routes.cr
 require "kemal"
 require "html"
+require "ecr"
 require "./db"
 
 module Memo
@@ -16,30 +17,19 @@ module Memo
       from notes order by updated_at desc
     SQL
 
+    # Get selected note ID from query parameter
+    selected_note_id = env.params.query["note"]?.try(&.to_i64?)
+
+    # If a specific note is selected, move it to the front
+    if selected_note_id && (selected_index = notes.index { |note| note[0] == selected_note_id })
+      selected_note = notes.delete_at(selected_index)
+      notes.unshift(selected_note)
+    end
+
     env.response.content_type = "text/html; charset=utf-8"
-    <<-HTML
-    <h1>Memo</h1>
-    <form method="post" action="/notes" style="margin-bottom:1rem">
-      <input name="title" placeholder="title">
-      <br><textarea name="body" rows="4" placeholder="body"></textarea><br>
-      <button>Add</button>
-    </form>
-    <hr>
-    #{notes.map { |id, t, b, c, u|
-        %(
-        <form method="post" action="/notes/#{id}/update">
-          <input name="title" value="#{h(t)}">
-          <br><textarea name="body" rows="4">#{h(b)}</textarea><br>
-          <small>updated: #{h(u)} / created: #{h(c)}</small>
-          <button>Save</button>
-        </form>
-        <form method="post" action="/notes/#{id}/delete" onsubmit="return confirm('Delete?')">
-          <button>Delete</button>
-        </form>
-        <hr>
-      )
-      }.join}
-    HTML
+
+    content = ECR.render "views/index.ecr"
+    ECR.render "views/layout.ecr"
   end
 
   post "/notes" do |env|
