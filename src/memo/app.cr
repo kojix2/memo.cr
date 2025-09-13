@@ -24,12 +24,12 @@ module Memo
         cleanup
       end
 
-      Signal::INT.trap do
+      Process.on_terminate do
         cleanup
         exit(0)
       end
 
-      Signal::TERM.trap do
+      Process.on_terminate do
         cleanup
         exit(0)
       end
