@@ -30,12 +30,12 @@
     <% else %>
         <% first_note = notes.first %>
         <div class="editor-header">
-            <input type="text" class="editor-title" id="note-title" 
-                   value="<%= HTML.escape(first_note[1]) %>" 
+            <input type="text" class="editor-title" id="note-title"
+                   value="<%= HTML.escape(first_note[1]) %>"
                    placeholder="Note title">
         </div>
         <div class="editor-content">
-            <textarea class="editor-textarea" id="note-body" 
+            <textarea class="editor-textarea" id="note-body"
                       placeholder="Start writing..."><%= HTML.escape(first_note[2]) %></textarea>
         </div>
         <div class="editor-actions">
@@ -53,10 +53,10 @@ function selectNote(noteId) {
     document.querySelectorAll('.note-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     // Add active class to clicked note
     event.target.closest('.note-item').classList.add('active');
-    
+
     // Load note content (for now, we'll just redirect)
     window.location.href = '/?note=' + noteId;
 }
@@ -67,15 +67,15 @@ function createNewNote() {
     form.method = 'POST';
     form.action = '/notes';
     form.style.display = 'none';
-    
+
     const titleInput = document.createElement('input');
     titleInput.name = 'title';
     titleInput.value = title;
-    
+
     const bodyInput = document.createElement('input');
     bodyInput.name = 'body';
     bodyInput.value = '';
-    
+
     form.appendChild(titleInput);
     form.appendChild(bodyInput);
     document.body.appendChild(form);
@@ -85,20 +85,20 @@ function createNewNote() {
 function saveNote(noteId) {
     const title = document.getElementById('note-title').value;
     const body = document.getElementById('note-body').value;
-    
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/notes/' + noteId + '/update';
     form.style.display = 'none';
-    
+
     const titleInput = document.createElement('input');
     titleInput.name = 'title';
     titleInput.value = title;
-    
+
     const bodyInput = document.createElement('input');
     bodyInput.name = 'body';
     bodyInput.value = body;
-    
+
     form.appendChild(titleInput);
     form.appendChild(bodyInput);
     document.body.appendChild(form);
@@ -131,7 +131,7 @@ function autoSave() {
 document.addEventListener('DOMContentLoaded', function() {
     const titleInput = document.getElementById('note-title');
     const bodyTextarea = document.getElementById('note-body');
-    
+
     if (titleInput) titleInput.addEventListener('input', autoSave);
     if (bodyTextarea) bodyTextarea.addEventListener('input', autoSave);
 });
