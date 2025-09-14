@@ -23,7 +23,22 @@ module Memo
     end
 
     def self.db_url : String
-      ENV["DATABASE_URL"]? || "sqlite3://#{db_path}?journal_mode=wal&synchronous=normal"
+      if env = ENV["DATABASE_URL"]?
+        return env
+      end
+
+      # Build a cross-platform, URI-safe sqlite3 URL.
+      # Crystal's URI expects absolute file paths as: sqlite3:///path/to/file
+      # On Windows, also convert backslashes to forward slashes (e.g., C:/Users/...)
+      path = db_path
+      {% if flag?(:windows) %}
+        path = path.gsub("\\", "/")
+      {% end %}
+
+      # Ensure we have exactly three slashes after the scheme by removing leading slashes from the path
+      # and then prefixing with sqlite3///
+      path = path.sub(/^\/+/, "")
+      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal"
     end
 
     def self.db : DB::Database
