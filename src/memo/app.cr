@@ -37,7 +37,7 @@ module Memo
       # FIXME: Wait for the server to start properly
       sleep 1.second
 
-      wv = Webview.window(1200, 800, Webview::SizeHints::NONE, "Memo App", @debug)
+      wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
       wv.navigate("http://localhost:#{@port}")
       wv.run
       wv.destroy
