@@ -38,7 +38,7 @@ module Memo
       # Ensure we have exactly three slashes after the scheme by removing leading slashes from the path
       # and then prefixing with sqlite3///
       path = path.sub(/^\/+/, "")
-      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal"
+      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal&encoding=utf8"
     end
 
     def self.db : DB::Database

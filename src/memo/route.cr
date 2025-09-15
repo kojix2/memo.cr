@@ -7,6 +7,11 @@ require "./db"
 module Memo
   Memo::DBX.setup
 
+  # Force UTF-8 encoding for all HTTP responses
+  before_all do |env|
+    env.response.content_type = "text/html; charset=utf-8"
+  end
+
   private def self.h(s) : String
     HTML.escape(s.to_s)
   end
@@ -25,8 +30,6 @@ module Memo
       selected_note = notes.delete_at(selected_index)
       notes.unshift(selected_note)
     end
-
-    env.response.content_type = "text/html; charset=utf-8"
 
     content = ECR.render "views/index.ecr"
     ECR.render "views/layout.ecr"
@@ -47,6 +50,7 @@ module Memo
     env.redirect "/"
   rescue ex
     env.response.status_code = 400
+    env.response.content_type = "text/plain; charset=utf-8"
     "Error: #{ex.message}"
   end
 
