@@ -25,11 +25,12 @@ module Memo
     # Get selected note ID from query parameter
     selected_note_id = env.params.query["note"]?.try(&.to_i64?)
 
-    # If a specific note is selected, move it to the front
-    if selected_note_id && (selected_index = notes.index { |note| note[0] == selected_note_id })
-      selected_note = notes.delete_at(selected_index)
-      notes.unshift(selected_note)
-    end
+    # Find the selected note or use the first note (most recently updated)
+    selected_note = if selected_note_id
+                      notes.find { |note| note[0] == selected_note_id } || notes.first?
+                    else
+                      notes.first?
+                    end
 
     content = ECR.render "views/index.ecr"
     ECR.render "views/layout.ecr"

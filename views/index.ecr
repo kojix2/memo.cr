@@ -5,8 +5,8 @@
         <button class="new-note-btn" onclick="createNewNote()">+ New Note</button>
     </div>
     <div class="notes-list">
-        <% notes.each_with_index do |(id, title, body, created_at, updated_at), index| %>
-            <div class="note-item <%= "active" if index == 0 %>" onclick="selectNote(<%= id %>)">
+        <% notes.each_with_index do |(id, title, body, created_at, updated_at), _| %>
+            <div class="note-item <%= "active" if selected_note && selected_note[0] == id %>" onclick="selectNote(<%= id %>)">
                 <div class="note-title"><%= HTML.escape(title.empty? ? "Untitled" : title) %></div>
                 <div class="note-preview"><%= HTML.escape(body.size > 50 ? body[0..50] + "..." : body) %></div>
                 <div class="note-date"><%= HTML.escape(updated_at.split(" ")[0]) %></div>
@@ -27,26 +27,29 @@
         <div class="empty-state">
             Select a note to start editing
         </div>
-    <% else %>
-        <% first_note = notes.first %>
+    <% elsif selected_note %>
         <div class="editor-header">
             <input type="text" class="editor-title" id="note-title"
-                   value="<%= HTML.escape(first_note[1]) %>"
+                   value="<%= HTML.escape(selected_note[1]) %>"
                    placeholder="Note title">
         </div>
         <div class="editor-content">
             <textarea class="editor-textarea" id="note-body"
-                      placeholder="Start writing..."><%= HTML.escape(first_note[2]) %></textarea>
+                      placeholder="Start writing..."><%= HTML.escape(selected_note[2]) %></textarea>
         </div>
         <div class="editor-actions">
-            <button class="btn" onclick="saveNote(<%= first_note[0] %>)">Save</button>
-            <button class="btn btn-delete" onclick="deleteNote(<%= first_note[0] %>)">Delete</button>
+            <button class="btn" onclick="saveNote(<%= selected_note[0] %>)">Save</button>
+            <button class="btn btn-delete" onclick="deleteNote(<%= selected_note[0] %>)">Delete</button>
+        </div>
+    <% else %>
+        <div class="empty-state">
+            Select a note to start editing
         </div>
     <% end %>
 </div>
 
 <script>
-let currentNoteId = <%= notes.empty? ? "null" : notes.first[0] %>;
+let currentNoteId = <%= notes.empty? || !selected_note ? "null" : selected_note[0] %>;
 
 function selectNote(noteId) {
     // Remove active class from all notes
@@ -72,7 +75,7 @@ function createNewNote() {
     titleInput.name = 'title';
     titleInput.value = title;
 
-    const bodyInput = document.createElement('input');
+    const bodyInput = document.createElement('textarea');
     bodyInput.name = 'body';
     bodyInput.value = '';
 
@@ -95,7 +98,7 @@ function saveNote(noteId) {
     titleInput.name = 'title';
     titleInput.value = title;
 
-    const bodyInput = document.createElement('input');
+    const bodyInput = document.createElement('textarea');
     bodyInput.name = 'body';
     bodyInput.value = body;
 
