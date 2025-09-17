@@ -269,11 +269,6 @@ window.addEventListener('beforeunload', function(e) {
     if (currentNoteId && checkForChanges()) {
         // Save reliably with sendBeacon
         saveNoteSync(currentNoteId);
-
-        // Show browser confirmation dialog (optional)
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
     }
 });
 
