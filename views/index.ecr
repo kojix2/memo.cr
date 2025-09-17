@@ -49,8 +49,42 @@
 
 <script>
 let currentNoteId = <%= notes.empty? || !selected_note ? "null" : selected_note[0] %>;
+let originalTitle = '';
+let originalBody = '';
+let hasUnsavedChanges = false;
+
+// Record initial values
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.getElementById('note-title');
+    const bodyTextarea = document.getElementById('note-body');
+
+    if (titleInput && bodyTextarea) {
+        originalTitle = titleInput.value;
+        originalBody = bodyTextarea.value;
+    }
+});
+
+function checkForChanges() {
+    if (!currentNoteId) return false;
+
+    const titleInput = document.getElementById('note-title');
+    const bodyTextarea = document.getElementById('note-body');
+
+    if (!titleInput || !bodyTextarea) return false;
+
+    const currentTitle = titleInput.value;
+    const currentBody = bodyTextarea.value;
+
+    hasUnsavedChanges = (currentTitle !== originalTitle || currentBody !== originalBody);
+    return hasUnsavedChanges;
+}
 
 function selectNote(noteId) {
+    // Save current note if it has changes
+    if (currentNoteId && checkForChanges()) {
+        saveNoteSync(currentNoteId);
+    }
+
     // Remove active class from all notes
     document.querySelectorAll('.note-item').forEach(item => {
         item.classList.remove('active');
@@ -63,7 +97,19 @@ function selectNote(noteId) {
     window.location.href = '/?note=' + noteId;
 }
 
-function createNewNote() {
+async function createNewNote() {
+    // Save current note if it has changes
+    if (currentNoteId && checkForChanges()) {
+        try {
+            await saveNoteAsync(currentNoteId);
+        } catch (error) {
+            console.error('Failed to save:', error);
+            if (!confirm('Failed to save current note. Do you want to create a new note?')) {
+                return;
+            }
+        }
+    }
+
     const title = 'Untitled';
     const form = document.createElement('form');
     form.method = 'POST';
@@ -84,6 +130,42 @@ function createNewNote() {
     form.submit();
 }
 
+// Async save function
+async function saveNoteAsync(noteId) {
+    const title = document.getElementById('note-title').value;
+    const body = document.getElementById('note-body').value;
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('body', body);
+
+    const response = await fetch('/notes/' + noteId + '/update', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to save' }));
+        throw new Error(errorData.message || 'Failed to save');
+    }
+
+    // Check response
+    const result = await response.json();
+    if (result.status !== 'success') {
+        throw new Error(result.message || 'Failed to save');
+    }
+
+    // Update original values on successful save
+    originalTitle = title;
+    originalBody = body;
+    hasUnsavedChanges = false;
+}
+
+// Sync save function (traditional method)
 function saveNote(noteId) {
     const title = document.getElementById('note-title').value;
     const body = document.getElementById('note-body').value;
@@ -107,8 +189,46 @@ function saveNote(noteId) {
     form.submit();
 }
 
+// Sync save function using sendBeacon
+function saveNoteSync(noteId) {
+    const title = document.getElementById('note-title').value;
+    const body = document.getElementById('note-body').value;
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('body', body);
+
+    // Send reliably with sendBeacon
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon('/notes/' + noteId + '/update', formData);
+    } else {
+        // Fallback to fetch with keepalive if sendBeacon is not available
+        fetch('/notes/' + noteId + '/update', {
+            method: 'POST',
+            body: formData,
+            keepalive: true
+        });
+    }
+
+    // Update original values after save
+    originalTitle = title;
+    originalBody = body;
+    hasUnsavedChanges = false;
+}
+
 function deleteNote(noteId) {
-    if (confirm('Delete this note?')) {
+    const button = event.target;
+
+    if (button.textContent === 'Delete') {
+        button.textContent = 'Really Delete?';
+        button.style.backgroundColor = '#ff4444';
+        button.style.color = 'white';
+        setTimeout(() => {
+            button.textContent = 'Delete';
+            button.style.backgroundColor = '';
+            button.style.color = '';
+        }, 3000);
+    } else {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/notes/' + noteId + '/delete';
@@ -129,12 +249,38 @@ function autoSave() {
     }
 }
 
-// Add auto-save listeners
+// Add auto-save listeners and change detection
 document.addEventListener('DOMContentLoaded', function() {
     const titleInput = document.getElementById('note-title');
     const bodyTextarea = document.getElementById('note-body');
 
-    if (titleInput) titleInput.addEventListener('input', autoSave);
-    if (bodyTextarea) bodyTextarea.addEventListener('input', autoSave);
+    if (titleInput) {
+        titleInput.addEventListener('input', autoSave);
+        titleInput.addEventListener('input', checkForChanges);
+    }
+    if (bodyTextarea) {
+        bodyTextarea.addEventListener('input', autoSave);
+        bodyTextarea.addEventListener('input', checkForChanges);
+    }
+});
+
+// Save on window unload
+window.addEventListener('beforeunload', function(e) {
+    if (currentNoteId && checkForChanges()) {
+        // Save reliably with sendBeacon
+        saveNoteSync(currentNoteId);
+
+        // Show browser confirmation dialog (optional)
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+});
+
+// Save when page visibility changes (tab switching, etc.)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden && currentNoteId && checkForChanges()) {
+        saveNoteSync(currentNoteId);
+    }
 });
 </script>

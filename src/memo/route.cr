@@ -48,11 +48,26 @@ module Memo
     now = Memo::DBX.now_s
     Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
       env.params.body["title"].to_s, env.params.body["body"].to_s, now, id
-    env.redirect "/"
+
+    # Return JSON response for fetch requests (AJAX)
+    if env.request.headers["Accept"]?.try(&.includes?("application/json")) ||
+       env.request.headers["X-Requested-With"]? == "XMLHttpRequest"
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "success", message: "Note updated successfully"}.to_json
+    else
+      # Redirect for regular form submissions
+      env.redirect "/"
+    end
   rescue ex
     env.response.status_code = 400
-    env.response.content_type = "text/plain; charset=utf-8"
-    "Error: #{ex.message}"
+    if env.request.headers["Accept"]?.try(&.includes?("application/json")) ||
+       env.request.headers["X-Requested-With"]? == "XMLHttpRequest"
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "error", message: ex.message}.to_json
+    else
+      env.response.content_type = "text/plain; charset=utf-8"
+      "Error: #{ex.message}"
+    end
   end
 
   post "/notes/:id/delete" do |env|
