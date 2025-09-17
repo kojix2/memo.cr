@@ -4,7 +4,7 @@
         <button class="new-note-btn" onclick="createNewNote()">+ New Note</button>
     </div>
     <div class="notes-list">
-        <% notes.each_with_index do |(id, title, body, created_at, updated_at), _| %>
+        <% notes.each do |id, title, body, _created_at, updated_at| %>
             <div class="note-item <%= "active" if selected_note && selected_note[0] == id %>" onclick="selectNote(<%= id %>)">
                 <div class="note-title"><%= HTML.escape(title.empty? ? "Untitled" : title) %></div>
                 <div class="note-preview"><%= HTML.escape(body.size > 50 ? body[0..50] + "..." : body) %></div>
