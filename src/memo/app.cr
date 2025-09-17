@@ -3,7 +3,6 @@ require "./route"
 
 module Memo
   class App
-    @server : HTTP::Server?
     @server_fiber : Fiber?
     @cleaned_up = false
 
@@ -14,7 +13,7 @@ module Memo
     def run
       @server_fiber = spawn do
         begin
-          @server = Kemal.run(port: @port, trap_signal: false)
+          Kemal.run(port: @port, trap_signal: false)
         rescue ex
           puts "Server error: #{ex.message}" if @debug
         end
@@ -34,8 +33,7 @@ module Memo
         exit(0)
       end
 
-      # FIXME: Wait for the server to start properly
-      sleep 1.second
+      wait_for_server_start
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
       wv.navigate("http://localhost:#{@port}")
@@ -51,20 +49,38 @@ module Memo
 
       puts "Shutting down server..." if @debug
 
-      if server = @server
-        begin
-          server.close
-        rescue ex
-          puts "Error closing server: #{ex.message}" if @debug
-        end
+      begin
+        Kemal.stop if Kemal.config.running
+      rescue ex
+        puts "Error stopping server: #{ex.message}" if @debug
       end
-
       sleep 0.1.seconds
     end
 
     private def find_available_port
       TCPServer.open("localhost", 0) do |server|
         server.local_address.port
+      end
+    end
+
+    private def wait_for_server_start
+      timeout = 10.seconds
+      start_time = Time.monotonic
+
+      until server_listening?
+        if (Time.monotonic - start_time) > timeout
+          raise "Server failed to start within #{timeout}"
+        end
+        Fiber.yield
+      end
+    end
+
+    private def server_listening?
+      begin
+        TCPSocket.new("localhost", @port).close
+        true
+      rescue Socket::ConnectError
+        false
       end
     end
   end
