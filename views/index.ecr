@@ -38,7 +38,7 @@
                       placeholder="Start writing..."><%= Memo.h(selected_note[2]) %></textarea>
         </div>
         <div class="editor-actions">
-            <button class="btn" onclick="saveNote(<%= selected_note[0] %>)">Save</button>
+            <button class="btn" onclick="saveNote(<%= selected_note[0] %>, false)">Save</button>
             <button class="btn btn-delete" onclick="deleteNote(<%= selected_note[0] %>)">Delete</button>
         </div>
     <% else %>
@@ -132,89 +132,43 @@ async function createNewNote() {
 }
 
 // Async save function
-async function saveNoteAsync(noteId) {
-    const title = document.getElementById('note-title').value;
-    const body = document.getElementById('note-body').value;
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('body', body);
-
-    const response = await fetch('/notes/' + noteId + '/update', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to save' }));
-        throw new Error(errorData.message || 'Failed to save');
+let saving = false;
+async function saveNote(noteId, silent = true) {
+    if (!noteId) return;
+    if (saving) return; // 単純化: 連続呼び出しは無視
+    const titleEl = document.getElementById('note-title');
+    const bodyEl  = document.getElementById('note-body');
+    if (!titleEl || !bodyEl) return;
+    const title = titleEl.value;
+    const body  = bodyEl.value;
+    const fd = new FormData();
+    fd.append('title', title);
+    fd.append('body', body);
+    saving = true;
+    try {
+        const res = await fetch('/notes/' + noteId + '/update', { method: 'POST', body: fd, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json().catch(()=>({status:'error'}));
+        if (json.status !== 'success') throw new Error('Save failed');
+        originalTitle = title;
+        originalBody = body;
+        hasUnsavedChanges = false;
+    } catch(e) {
+        if (!silent) console.error(e);
+    } finally {
+        saving = false;
     }
-
-    // Check response
-    const result = await response.json();
-    if (result.status !== 'success') {
-        throw new Error(result.message || 'Failed to save');
-    }
-
-    // Update original values on successful save
-    originalTitle = title;
-    originalBody = body;
-    hasUnsavedChanges = false;
 }
-
-// Sync save function (traditional method)
-function saveNote(noteId) {
-    const title = document.getElementById('note-title').value;
-    const body = document.getElementById('note-body').value;
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/notes/' + noteId + '/update';
-    form.style.display = 'none';
-
-    const titleInput = document.createElement('input');
-    titleInput.name = 'title';
-    titleInput.value = title;
-
-    const bodyInput = document.createElement('textarea');
-    bodyInput.name = 'body';
-    bodyInput.value = body;
-
-    form.appendChild(titleInput);
-    form.appendChild(bodyInput);
-    document.body.appendChild(form);
-    form.submit();
-}
-
-// Sync save function using sendBeacon
-function saveNoteSync(noteId) {
-    const title = document.getElementById('note-title').value;
-    const body = document.getElementById('note-body').value;
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('body', body);
-
-    // Send reliably with sendBeacon
-    if (navigator.sendBeacon) {
-        navigator.sendBeacon('/notes/' + noteId + '/update', formData);
-    } else {
-        // Fallback to fetch with keepalive if sendBeacon is not available
-        fetch('/notes/' + noteId + '/update', {
-            method: 'POST',
-            body: formData,
-            keepalive: true
-        });
-    }
-
-    // Update original values after save
-    originalTitle = title;
-    originalBody = body;
-    hasUnsavedChanges = false;
+// beforeunload用の最小限 fallback (成功判定不要)
+function saveNoteBeacon(noteId){
+    if (!noteId || !hasUnsavedChanges) return;
+    const titleEl = document.getElementById('note-title');
+    const bodyEl  = document.getElementById('note-body');
+    if (!titleEl || !bodyEl) return;
+    const fd = new FormData();
+    fd.append('title', titleEl.value);
+    fd.append('body', bodyEl.value);
+    if (navigator.sendBeacon) navigator.sendBeacon('/notes/' + noteId + '/update', fd);
 }
 
 function deleteNote(noteId) {
@@ -242,12 +196,9 @@ function deleteNote(noteId) {
 // Auto-save functionality
 let saveTimeout;
 function autoSave() {
-    if (currentNoteId) {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            saveNote(currentNoteId);
-        }, 3000);
-    }
+    if (!currentNoteId) return;
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => saveNote(currentNoteId, true), 2000);
 }
 
 // Add auto-save listeners and change detection
@@ -266,17 +217,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Save on window unload
-window.addEventListener('beforeunload', function(e) {
-    if (currentNoteId && checkForChanges()) {
-        // Save reliably with sendBeacon
-        saveNoteSync(currentNoteId);
-    }
-});
+window.addEventListener('beforeunload', () => saveNoteBeacon(currentNoteId));
 
 // Save when page visibility changes (tab switching, etc.)
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden && currentNoteId && checkForChanges()) {
-        saveNoteSync(currentNoteId);
-    }
-});
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNoteBeacon(currentNoteId); });
 </script>
