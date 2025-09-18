@@ -73,12 +73,10 @@ module Memo
     end
 
     private def server_listening?
-      begin
-        TCPSocket.new("localhost", @port).close
-        true
-      rescue Socket::ConnectError
-        false
-      end
+      TCPSocket.new("localhost", @port).close
+      true
+    rescue Socket::ConnectError
+      false
     end
   end
 end

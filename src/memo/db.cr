@@ -64,7 +64,7 @@ module Memo
 
     # Gracefully close and reset the cached DB connection.
     def self.close
-      if (db = @@db)
+      if db = @@db
         begin
           db.close
         rescue ex
