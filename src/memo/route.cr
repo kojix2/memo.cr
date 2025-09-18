@@ -89,10 +89,10 @@ module Memo
     started = Time.monotonic
     id = env.params.url["id"].to_i64
     raw_title = env.params.body["title"]?.try(&.to_s) || ""
-    raw_body  = env.params.body["body"]?.try(&.to_s)  || ""
+    raw_body = env.params.body["body"]?.try(&.to_s) || ""
 
-  # Log payload size first. Avoid logging full body; record its length only. Title preview limited to 200 chars.
-    LOGGER.debug { "UPDATE begin id=#{id} title_len=#{raw_title.bytesize} body_len=#{raw_body.bytesize} title_preview=#{raw_title[0,200].inspect}" }
+    # Log payload size first. Avoid logging full body; record its length only. Title preview limited to 200 chars.
+    LOGGER.debug { "UPDATE begin id=#{id} title_len=#{raw_title.bytesize} body_len=#{raw_body.bytesize} title_preview=#{raw_title[0, 200].inspect}" }
 
     now = Memo::DBX.now_s
     begin
