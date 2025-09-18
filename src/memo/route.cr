@@ -65,7 +65,7 @@ module Memo
     Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
       env.params.body["title"].to_s, env.params.body["body"].to_s, now, id
     env.response.content_type = "application/json; charset=utf-8"
-    {status: "success"}.to_json
+    {status: "success", id: id, updated_at: now}.to_json
   rescue ex
     env.response.status_code = 400
     env.response.content_type = "application/json; charset=utf-8"

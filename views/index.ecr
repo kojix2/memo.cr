@@ -138,7 +138,7 @@ async function createNewNote() {
 let saving = false;
 async function saveNote(noteId, silent = true) {
     if (!noteId) return;
-    if (saving) return; // 単純化: 連続呼び出しは無視
+    if (saving) return; 
     const titleEl = document.getElementById('note-title');
     const bodyEl  = document.getElementById('note-body');
     if (!titleEl || !bodyEl) return;
@@ -156,6 +156,28 @@ async function saveNote(noteId, silent = true) {
         originalTitle = title;
         originalBody = body;
         hasUnsavedChanges = false;
+
+    // Sidebar DOM update (title, preview, date)
+        try {
+            const activeItem = document.querySelector('.notes-list .note-item.active');
+            if (activeItem) {
+                const titleDiv = activeItem.querySelector('.note-title');
+                const previewDiv = activeItem.querySelector('.note-preview');
+                const dateDiv = activeItem.querySelector('.note-date');
+                if (titleDiv) titleDiv.textContent = title.trim() === '' ? 'Untitled' : title;
+                if (previewDiv) {
+                    let preview = body.slice(0, 51);
+                    if (body.length > 51) preview += '...';
+                    previewDiv.textContent = preview;
+                }
+                if (dateDiv && json.updated_at) {
+                    // Extract date portion from format "YYYY-MM-DD HH:MM:SS.FFF"
+                    dateDiv.textContent = String(json.updated_at).split(' ')[0];
+                }
+            }
+        } catch(domErr) {
+            if (!silent) console.warn('Sidebar update failed', domErr);
+        }
     } catch(e) {
         if (!silent) console.error(e);
     } finally {
