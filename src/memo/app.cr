@@ -1,4 +1,16 @@
+require "log"
 require "webview"
+
+# Configure logging from LOG_LEVEL (default info); relies on Crystal's std Log.setup_from_env
+Log.setup_from_env
+
+module Memo
+  # Project-wide logger root source "memo"
+  Log = ::Log.for("memo")
+end
+
+::Log.info { "Memo starting; LOG_LEVEL=#{ENV["LOG_LEVEL"]? || "(default info)"}" }
+
 require "./route"
 
 module Memo

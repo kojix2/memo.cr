@@ -7,6 +7,32 @@ require "./db"
 module Memo
   Memo::DBX.setup
 
+  # Use the project-wide logger defined in Memo::Log (app.cr)
+  LOGGER = Memo::Log
+
+  # Per-request lightweight timing (only active when debug logging is enabled)
+  before_all do |env|
+    if LOGGER.level <= ::Log::Severity::Debug
+      # Store monotonic timestamp as Int64 nanoseconds (allowed StoreTypes)
+      env.set "__memo_req_start_ns", Time.monotonic.total_nanoseconds
+      env.set "__memo_req_id", Random::Secure.hex(4)
+      rid = (env.get("__memo_req_id") rescue nil)
+      LOGGER.debug { "request begin id=#{rid} #{env.request.method} #{env.request.path}" }
+    end
+  end
+
+  after_all do |env|
+    if LOGGER.level <= ::Log::Severity::Debug
+      start_ns = (env.get("__memo_req_start_ns") rescue nil)
+      rid = (env.get("__memo_req_id") rescue nil)
+      if start_ns.is_a?(Int64)
+        now_ns = Time.monotonic.total_nanoseconds
+        dur_ms = ((now_ns - start_ns) / 1_000_000.0).round(1)
+        LOGGER.debug { "request end id=#{rid} status=#{env.response.status_code} duration_ms=#{dur_ms}" }
+      end
+    end
+  end
+
   # Force UTF-8 encoding for all HTTP responses
   before_all do |env|
     env.response.content_type = "text/html; charset=utf-8"
@@ -60,16 +86,33 @@ module Memo
   end
 
   post "/notes/:id/update" do |env|
+    started = Time.monotonic
     id = env.params.url["id"].to_i64
+    raw_title = env.params.body["title"]?.try(&.to_s) || ""
+    raw_body  = env.params.body["body"]?.try(&.to_s)  || ""
+
+  # Log payload size first. Avoid logging full body; record its length only. Title preview limited to 200 chars.
+    LOGGER.debug { "UPDATE begin id=#{id} title_len=#{raw_title.bytesize} body_len=#{raw_body.bytesize} title_preview=#{raw_title[0,200].inspect}" }
+
     now = Memo::DBX.now_s
-    Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
-      env.params.body["title"].to_s, env.params.body["body"].to_s, now, id
-    env.response.content_type = "application/json; charset=utf-8"
-    {status: "success", id: id, updated_at: now}.to_json
-  rescue ex
-    env.response.status_code = 400
-    env.response.content_type = "application/json; charset=utf-8"
-    {status: "error", message: ex.message}.to_json
+    begin
+      affected = Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
+        raw_title, raw_body, now, id
+      duration_ms = ((Time.monotonic - started).total_milliseconds).round(1)
+      if affected == 0
+        LOGGER.warn { "UPDATE noop id=#{id} (no matching row) elapsed_ms=#{duration_ms}" }
+      else
+        LOGGER.debug { "UPDATE ok id=#{id} affected=#{affected} elapsed_ms=#{duration_ms}" }
+      end
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "success", id: id, updated_at: now}.to_json
+    rescue ex
+      duration_ms = ((Time.monotonic - started).total_milliseconds).round(1)
+      LOGGER.error(exception: ex) { "UPDATE failed id=#{id} elapsed_ms=#{duration_ms} message=#{ex.message}" }
+      env.response.status_code = 400
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "error", message: ex.message}.to_json
+    end
   end
 
   post "/notes/:id/delete" do |env|
