@@ -86,7 +86,9 @@ function checkForChanges() {
 function selectNote(noteId) {
     // Save current note if it has changes
     if (currentNoteId && checkForChanges()) {
-        saveNoteSync(currentNoteId);
+        // Attempt synchronous save (actually async but we don't await to keep navigation responsive)
+        console.debug('[memo] selectNote auto-saving current note before navigation id=' + currentNoteId);
+        saveNote(currentNoteId, true);
     }
 
     // Remove active class from all notes
@@ -105,7 +107,9 @@ async function createNewNote() {
     // Save current note if it has changes
     if (currentNoteId && checkForChanges()) {
         try {
-            await saveNoteAsync(currentNoteId);
+            console.debug('[memo] createNewNote: attempting to save current note id=' + currentNoteId);
+            await saveNote(currentNoteId, false);
+            console.debug('[memo] createNewNote: save succeeded for id=' + currentNoteId);
         } catch (error) {
             console.error('Failed to save:', error);
             if (!confirm('Failed to save current note. Do you want to create a new note?')) {
@@ -139,6 +143,7 @@ let saving = false;
 async function saveNote(noteId, silent = true) {
     if (!noteId) return;
     if (saving) return; 
+    if (!silent) console.debug('[memo] saveNote: start id=' + noteId);
     const titleEl = document.getElementById('note-title');
     const bodyEl  = document.getElementById('note-body');
     if (!titleEl || !bodyEl) return;
@@ -152,7 +157,8 @@ async function saveNote(noteId, silent = true) {
         const res = await fetch('/notes/' + noteId + '/update', { method: 'POST', body: fd, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json().catch(()=>({status:'error'}));
-        if (json.status !== 'success') throw new Error('Save failed');
+    if (json.status !== 'success') throw new Error('Save failed');
+    if (!silent) console.debug('[memo] saveNote: success id=' + noteId);
         originalTitle = title;
         originalBody = body;
         hasUnsavedChanges = false;
@@ -180,8 +186,12 @@ async function saveNote(noteId, silent = true) {
         }
     } catch(e) {
         if (!silent) console.error(e);
+        if (!silent) console.debug('[memo] saveNote: failed id=' + noteId + ' message=' + e.message);
+        // Re-throw when not silent so caller (e.g., createNewNote) can react
+        if (!silent) throw e;
     } finally {
         saving = false;
+        if (!silent) console.debug('[memo] saveNote: end id=' + noteId);
     }
 }
 // beforeunload用の最小限 fallback (成功判定不要)
