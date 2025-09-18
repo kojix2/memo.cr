@@ -38,7 +38,8 @@ module Memo
       # Ensure we have exactly three slashes after the scheme by removing leading slashes from the path
       # and then prefixing with sqlite3///
       path = path.sub(/^\/+/, "")
-      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal&encoding=utf8"
+      # Add busy_timeout to reduce SQLITE_BUSY errors under multi-thread (-Dpreview_mt)
+      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal&encoding=utf8&busy_timeout=5000"
     end
 
     def self.db : DB::Database
@@ -59,6 +60,19 @@ module Memo
 
     def self.now_s
       Time.local.to_s(SQLite3::DATE_FORMAT_SUBSECOND)
+    end
+
+    # Gracefully close and reset the cached DB connection.
+    def self.close
+      if (db = @@db)
+        begin
+          db.close
+        rescue ex
+          STDERR.puts "DB close error: #{ex.message}"
+        ensure
+          @@db = nil
+        end
+      end
     end
   end
 end
