@@ -56,6 +56,7 @@ module Memo
           updated_at text not null
         )
       SQL
+      db.exec "create index if not exists notes_updated_at_idx on notes(updated_at)"
     end
 
     def self.now_s

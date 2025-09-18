@@ -36,6 +36,22 @@ module Memo
     ECR.render "views/layout.ecr"
   end
 
+  # Minimal export endpoint (no auth, local desktop assumption)
+  get "/export.json" do |env|
+    rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
+      select id, title, body, created_at, updated_at from notes order by updated_at desc
+    SQL
+    env.response.content_type = "application/json; charset=utf-8"
+    rows.map { |id, title, body, created_at, updated_at|
+      {id: id, title: title, body: body, created_at: created_at, updated_at: updated_at}
+    }.to_json
+  end
+
+  get "/settings" do |_|
+    content = ECR.render "views/settings.ecr"
+    ECR.render "views/layout.ecr"
+  end
+
   post "/notes" do |env|
     now = Memo::DBX.now_s
     Memo::DBX.db.exec "insert into notes(title, body, created_at, updated_at) values(?,?,?,?)",
