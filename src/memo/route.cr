@@ -12,7 +12,7 @@ module Memo
     env.response.content_type = "text/html; charset=utf-8"
   end
 
-  private def self.h(s) : String
+  def self.h(s) : String
     HTML.escape(s.to_s)
   end
 
