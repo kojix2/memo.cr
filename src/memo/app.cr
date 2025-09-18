@@ -49,6 +49,8 @@ module Memo
       rescue ex
         puts "Error stopping server: #{ex.message}" if @debug
       end
+      # Attempt to close DB connection politely.
+      Memo::DBX.close rescue nil
       sleep 0.1.seconds
     end
 
