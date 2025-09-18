@@ -31,15 +31,15 @@
         .btn-delete:hover { background: #f1c40f; }
         .empty-state { display: flex; align-items: center; justify-content: center; height: 100%; color: #c4b896; font-size: 18px; }
         .editor-title::placeholder, .editor-textarea::placeholder { color: #c4b896; }
+        .sidebar-footer { padding: 15px 20px; border-top: 1px solid #ede8c1; }
+        .settings-link { font-size: 12px; color: #c4b896; text-decoration: none; }
+        .settings-link:hover { color: #8b7355; }
         @media (max-width: 768px) { .sidebar { width: 250px; } }
     </style>
 </head>
 <body>
     <div class="app-container">
         <%= content %>
-    </div>
-    <div style="position:fixed;bottom:6px;right:10px;font-size:12px;opacity:.6;">
-        <a href="/settings" style="color:#8b7355;text-decoration:none;">Settings</a>
     </div>
 </body>
 </html>
