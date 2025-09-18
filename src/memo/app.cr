@@ -28,11 +28,6 @@ module Memo
         exit(0)
       end
 
-      Process.on_terminate do
-        cleanup
-        exit(0)
-      end
-
       wait_for_server_start
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
