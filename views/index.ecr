@@ -194,7 +194,8 @@ async function saveNote(noteId, silent = true) {
         if (!silent) console.debug('[memo] saveNote: end id=' + noteId);
     }
 }
-// beforeunload用の最小限 fallback (成功判定不要)
+// This is a minimal fallback for the beforeunload event.
+// No success check is required.
 function saveNoteBeacon(noteId){
     if (!noteId || !hasUnsavedChanges) return;
     const titleEl = document.getElementById('note-title');
