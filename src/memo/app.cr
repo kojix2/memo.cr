@@ -5,9 +5,10 @@ module Memo
   class App
     @server_fiber : Fiber?
     @cleaned_up = false
+    @port : Int32
 
     def initialize(@debug = false)
-      @port = find_available_port || 3000
+      @port = find_available_port
     end
 
     def run
