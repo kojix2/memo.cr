@@ -58,6 +58,7 @@ jobs:
         env:
           CXX: 'g++ -I${{ github.workspace }}/_wv2/build/native/include'
           CFLAGS: '-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14'
+          CXXFLAGS: '-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14'
         run: |
           shards install --without-development --release
           shards build --release --static
