@@ -60,20 +60,6 @@ jobs:
           ls
           ls lib/webview/ext
 
-      - name: Build webview.o with MinGW via Makefile (unchanged)
-        if: matrix.target == 'x86_64-pc-windows-gnu'
-        shell: msys2 {0}
-        run: |
-          make CXX=g++ CFLAGS="-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -Iext -std=c++11"
-          ls -l ext/webview.o
-
-      - name: Create static archive (libwebview.a)
-        if: matrix.target == 'x86_64-pc-windows-gnu'
-        shell: msys2 {0}
-        run: |
-          ar rcs ext/libwebview.a ext/webview.o
-          ls -l ext/libwebview.a
-
       - name: Build on Windows (MinGW64)
         if: matrix.target == 'x86_64-pc-windows-gnu'
         shell: msys2 {0}
