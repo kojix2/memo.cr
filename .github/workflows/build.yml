@@ -34,6 +34,7 @@ jobs:
             git
             make
             unzip
+            zip
             curl
             mingw-w64-x86_64-crystal
             mingw-w64-x86_64-shards
@@ -60,9 +61,6 @@ jobs:
           CXXFLAGS: "-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
         run: |
           shards install --without-development
-          pwd
-          ls
-          ls lib/webview/ext
           WIN_PWD=$(pwd -W)
           WIN_PWD=${WIN_PWD//\\/\/}
           LINKDIR="$WIN_PWD/lib/webview/ext"
