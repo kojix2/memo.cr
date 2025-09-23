@@ -26,7 +26,7 @@ module Memo
     def run
       @server_fiber = spawn do
         begin
-          Kemal.run(host_binding: "127.0.0.1", port: @port, trap_signal: false)
+          Kemal.run(port: @port, trap_signal: false)
         rescue ex
           puts "Server error: #{ex.message}" if @debug
         end
@@ -44,7 +44,7 @@ module Memo
       wait_for_server_start
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
-      wv.navigate("http://127.0.0.1:#{@port}")
+      wv.navigate("http://localhost:#{@port}")
       wv.run
       wv.destroy
 
