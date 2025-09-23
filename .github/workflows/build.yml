@@ -63,6 +63,9 @@ jobs:
       - name: Build on Windows (MinGW64)
         if: matrix.target == 'x86_64-pc-windows-gnu'
         shell: msys2 {0}
+        env:
+          CXX: 'g++ -Iext'
+          CFLAGS: '-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++11'
         run: |
           shards install --without-development --release
           shards build --release --static
