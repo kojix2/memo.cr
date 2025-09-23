@@ -63,7 +63,7 @@ jobs:
           pwd
           ls
           ls lib/webview/ext
-          shards build --release --link-flags="$(pwd)/lib/webview/ext/libwebview.a"
+          shards build --release --link-flags="-L $(pwd)/lib/webview/ext/"
           file bin/$BIN.exe
           bin/$BIN --help
           PKG=memo-${VERSION}-${{ matrix.target }}
