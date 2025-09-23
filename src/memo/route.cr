@@ -62,6 +62,12 @@ module Memo
     ECR.render "views/layout.ecr"
   end
 
+  # Healthcheck endpoint
+  get "/healthz" do |env|
+    env.response.content_type = "text/plain; charset=utf-8"
+    "ok"
+  end
+
   # Minimal export endpoint (no auth, local desktop assumption)
   get "/export.json" do |env|
     rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
