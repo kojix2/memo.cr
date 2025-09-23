@@ -33,13 +33,31 @@ jobs:
           install: >-
             git
             make
+            unzip
+            curl
             mingw-w64-x86_64-crystal
             mingw-w64-x86_64-shards
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-sqlite3
-            mingw-w64-x86_64-qt6-webview
+
+      - name: Fetch WebView2 headers (NuGet)
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        shell: msys2 {0}
+        env:
+          WV2_VER: 1.0.1150.38
+        run: |
+          pacman -S --noconfirm --needed unzip curl
+          mkdir -p _wv2 && cd _wv2
+          curl -L "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WV2_VER}" -o webview2.nupkg
+          unzip -q webview2.nupkg build/native/include/*.h
+          mkdir -p ../lib/webview/ext
+          cp -v build/native/include/*.h ../lib/webview/ext/
+          test -f ../lib/webview/ext/webview2.h || cp -v ../lib/webview/ext/WebView2.h ../lib/webview/ext/webview2.h
+          cd ..
+          pwd
+          ls lib/webview/ext
 
       - name: Build on Windows (MinGW64)
         if: matrix.target == 'x86_64-pc-windows-gnu'
@@ -63,4 +81,3 @@ jobs:
           path: |
             *.zip
             *.tar.gz
-
