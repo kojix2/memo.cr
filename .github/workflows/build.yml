@@ -48,23 +48,15 @@ jobs:
         env:
           WV2_VER: 1.0.1150.38
         run: |
-          pacman -S --noconfirm --needed unzip curl
           mkdir -p _wv2 && cd _wv2
           curl -L "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WV2_VER}" -o webview2.nupkg
           unzip -q webview2.nupkg build/native/include/*.h
-          mkdir -p ../lib/webview/ext
-          cp -v build/native/include/*.h ../lib/webview/ext/
-          test -f ../lib/webview/ext/webview2.h || cp -v ../lib/webview/ext/WebView2.h ../lib/webview/ext/webview2.h
-          cd .. && rm -rf _wv2
-          pwd
-          ls
-          ls lib/webview/ext
 
       - name: Build on Windows (MinGW64)
         if: matrix.target == 'x86_64-pc-windows-gnu'
         shell: msys2 {0}
         env:
-          CXX: 'g++ -Iext'
+          CXX: 'g++ -I${{ github.workspace }}/_wv2/build/native/include'
           CFLAGS: '-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++11'
         run: |
           shards install --without-development --release
