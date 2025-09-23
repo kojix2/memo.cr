@@ -63,9 +63,7 @@ jobs:
           pwd
           ls
           ls lib/webview/ext
-          # MinGW のリンカは /d/... 形式を解さないことがあるため Windows 形式に変換
           WIN_PWD=$(pwd -W)
-          # バックスラッシュをスラッシュに統一 (D:\path -> D:/path)
           WIN_PWD=${WIN_PWD//\\/\/}
           LINKDIR="$WIN_PWD/lib/webview/ext"
           echo "Using LINKDIR=$LINKDIR"
