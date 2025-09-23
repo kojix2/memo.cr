@@ -59,8 +59,9 @@ jobs:
           CXX: "g++ -I${{ github.workspace }}/_wv2/build/native/include"
           CXXFLAGS: "-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
         run: |
-          shards install --without-development --release
-          shards build --release --static
+          shards install --without-development
+          ls lib/webview/ext
+          shards build --release --link-flags="-L lib/webview/ext/"
           file bin/$BIN.exe
           bin/$BIN --help
           PKG=memo-${VERSION}-${{ matrix.target }}
