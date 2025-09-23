@@ -17,7 +17,7 @@ dependencies:
     github: crystal-lang/crystal-sqlite3
   webview:
     github: kojix2/webview
-    branch: dev
+    branch: cxxflags
 
 crystal: '>= 1.17.1'
 
