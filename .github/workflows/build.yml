@@ -32,6 +32,7 @@ jobs:
           update: true
           install: >-
             git
+            make
             mingw-w64-x86_64-crystal
             mingw-w64-x86_64-shards
             mingw-w64-x86_64-gcc
