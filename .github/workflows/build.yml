@@ -60,6 +60,8 @@ jobs:
           CXXFLAGS: "-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
         run: |
           shards install --without-development
+          pwd
+          ls
           ls lib/webview/ext
           shards build --release --link-flags="$(pwd)lib/webview/ext/libwebview.a"
           file bin/$BIN.exe
