@@ -65,7 +65,15 @@ jobs:
           WIN_PWD=${WIN_PWD//\\/\/}
           LINKDIR="$WIN_PWD/lib/webview/ext"
           echo "Using LINKDIR=$LINKDIR"
-          shards build --release --static --link-flags="-L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lshlwapi -lversion"
+            shards build --release --static \
+            --link-flags="-L $LINKDIR \
+            -Wl,--start-group \
+            -lwebview \
+            -lstdc++ \
+            -Wl,--end-group \
+            -lshlwapi \
+            -lversion" \
+            -Dpreview_mt
           file bin/$BIN.exe
           bin/$BIN --help
           PKG=memo-${VERSION}-${{ matrix.target }}
