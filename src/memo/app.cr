@@ -21,10 +21,11 @@ module Memo
 
     def initialize(@debug = false)
       @port = find_available_port
+      @kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
     end
 
     def run
-      @server_fiber = spawn do
+      @server_fiber = @kemal_context.spawn do
         begin
           Kemal.run(port: @port, trap_signal: false)
         rescue ex

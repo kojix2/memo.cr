@@ -73,7 +73,8 @@ jobs:
             -Wl,--end-group \
             -lshlwapi \
             -lversion" \
-            -Dpreview_mt
+            -Dpreview_mt \
+            -Dexecution_context
           file bin/$BIN.exe
           bin/$BIN --help
           PKG=memo-${VERSION}-${{ matrix.target }}
