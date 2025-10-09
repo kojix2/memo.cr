@@ -9,7 +9,7 @@ Practice with [WebView](https://github.com/naqvis/webview)
 ## Installation
 
 ```sh
-shards build --release -Dpreview_mt
+shards build --release -Dpreview_mt -Dexecution_context
 ```
 
 ## Usage
