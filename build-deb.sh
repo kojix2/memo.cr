@@ -51,12 +51,12 @@ fpm -s dir -t deb \
     --license "$LICENSE" \
     --url "$URL" \
     --deb-no-default-config-files \
-    --depends "libgtk-3-0t64" \
-    --depends "libglib2.0-0t64" \
-    --depends "libpango-1.0-0" \
-    --depends "libcairo2" \
-    --depends "libssl3t64" \
-    --depends "libgc1" \
+    --depends "libwebkit2gtk-4.1-0" \
+    --depends "libgtk-3-0" \
+    --depends "libglib2.0-0" \
+    --depends "libsqlite3-0" \
+    --depends "libssl3" \
+    --depends "libstdc++6" \
     --package "$DIST_DIR/${APP_NAME}_${VERSION}_amd64.deb" \
     -C "$TEMP_DIR" \
     .

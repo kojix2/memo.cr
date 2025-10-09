@@ -1,0 +1,42 @@
+name: Build Debian Package
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Crystal
+        uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: latest
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ruby ruby-dev rubygems build-essential \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libsqlite3-dev \
+            libssl-dev \
+            pkg-config
+          sudo gem install --no-document fpm
+
+      - name: Build Debian package
+        run: |
+          chmod +x build-deb.sh
+          ./build-deb.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: memo-debian
+          path: |
+            dist/*.deb

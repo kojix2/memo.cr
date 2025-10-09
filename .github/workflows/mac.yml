@@ -1,0 +1,32 @@
+name: Build macOS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Crystal
+        run: |
+          brew update
+          brew install crystal
+
+      - name: Build macOS app
+        run: |
+          chmod +x build-mac.sh
+          ./build-mac.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: memo-macos
+          path: |
+            dist/*.dmg
+            dist/*.app

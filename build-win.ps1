@@ -11,6 +11,11 @@ Get-Content .env | ForEach-Object {
     }
 }
 
+# Override with environment variable if set
+if ($env:INNO_SETUP_PATH) {
+    $INNO_SETUP_PATH = $env:INNO_SETUP_PATH
+}
+
 $EXECUTABLE_PATH = "bin\$APP_NAME.exe"
 $DIST_DIR = "dist"
 $INSTALLER_NAME = "$APP_NAME-setup.exe"
@@ -19,15 +24,19 @@ $OUTPUT_DIR = "Output"
 
 # Use Inno Setup compiler from configuration
 $ISCC = $INNO_SETUP_PATH
-if (-not (Get-Command $ISCC -ErrorAction SilentlyContinue)) {
+if (-not $ISCC -or -not (Test-Path $ISCC)) {
     Write-Error "Error: Inno Setup not found at '$ISCC'. Please set INNO_SETUP_PATH in .env file or environment variable."
     Write-Host "Example: INNO_SETUP_PATH=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
     exit 1
 }
 
-Write-Host "Building $APP_NAME v$VERSION..."
-& shards install
-& shards build --release --no-debug --static --link-flags=/SUBSYSTEM:WINDOWS $CRFLAGS
+# Check if executable exists (should be built by MSYS2)
+if (-not (Test-Path $EXECUTABLE_PATH)) {
+    Write-Error "Error: Executable not found at '$EXECUTABLE_PATH'. Please build first with 'shards build --release'"
+    exit 1
+}
+
+Write-Host "Creating installer for $APP_NAME v$VERSION..."
 
 if (Test-Path $DIST_DIR) { Remove-Item $DIST_DIR -Recurse -Force }
 if (Test-Path $OUTPUT_DIR) { Remove-Item $OUTPUT_DIR -Recurse -Force }
