@@ -51,9 +51,8 @@ jobs:
           CXXFLAGS: "-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
         run: |
           shards install --without-development
-          WIN_PWD=$(pwd -W)
-          WIN_PWD=${WIN_PWD//\\/\/}
-          LINKDIR="$WIN_PWD/lib/webview/ext"
+          # Test with cygpath -m for mixed-mode path conversion
+          LINKDIR=$(cygpath -m "$(pwd)/lib/webview/ext")
           echo "Using LINKDIR=$LINKDIR"
           shards build --release --no-debug --static -Dpreview_mt -Dexecution_context \
             --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
