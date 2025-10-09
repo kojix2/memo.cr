@@ -50,8 +50,8 @@ jobs:
           export CXXFLAGS="-std=c++14 -I$(pwd)/_wv2/build/native/include"
           shards install
           ls lib/webview/ext
-          WEBVIEW_LIB=$(cygpath -w "$(pwd)/lib/webview/ext/libwebview.a")
-          shards build --release --no-debug --static -Dpreview_mt -Dexecution_context --link-flags="-Wl,--subsystem,windows \"$WEBVIEW_LIB\" -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32"
+          WEBVIEW_LIB=$(cygpath -w "$(pwd)/lib/webview/ext")
+          shards build --release --no-debug --static -Dpreview_mt -Dexecution_context --link-flags="-Wl,--subsystem,windows -L\"$WEBVIEW_LIB\" -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32"
 
       - name: Create installer with Inno Setup
         env:
