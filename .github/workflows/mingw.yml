@@ -55,7 +55,8 @@ jobs:
           WIN_PWD=${WIN_PWD//\\/\/}
           LINKDIR="$WIN_PWD/lib/webview/ext"
           echo "Using LINKDIR=$LINKDIR"
-          shards build --release --no-debug --static -Dpreview_mt -Dexecution_context --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
+          shards build --release --no-debug --static -Dpreview_mt -Dexecution_context \
+            --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
 
       - name: Create installer with Inno Setup
         env:
