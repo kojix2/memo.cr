@@ -50,8 +50,8 @@ jobs:
           export CXXFLAGS="-std=c++14 -I$(pwd)/_wv2/build/native/include"
           shards install
           ls lib/webview/ext
-          LINKDIR=$(pwd)/lib/webview/ext
-          LINKDIR=${LINKDIR//\\/\/}
+          LINKDIR="$(pwd -W)/lib/webview/ext"
+          LINKDIR=${LINKDIR//\\\\/\\\\\\\\}
           echo "Using LINKDIR=$LINKDIR"
           shards build --release --no-debug --static -Dpreview_mt -Dexecution_context --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32"
 
