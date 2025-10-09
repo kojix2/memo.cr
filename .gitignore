@@ -4,3 +4,13 @@
 /.shards/
 *.dwarf
 *.lock
+
+/dist
+
+*.ico
+*.icns
+
+*.dll
+*.exe
+*.dylib
+*.so
