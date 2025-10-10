@@ -14,10 +14,12 @@ FRAMEWORKS_DIR="$APP_BUNDLE/Contents/Frameworks"
 PLIST_PATH="$APP_BUNDLE/Contents/Info.plist"
 ICON_NAME="app_icon"
 ICON_PATH="resources/$ICON_NAME.icns"
-DMG_NAME="${APP_NAME}.dmg"
+ARCH="aarch64"
+DMG_NAME="${APP_NAME}_${VERSION}_${ARCH}.dmg"
 VOL_NAME="$APP_NAME_CAPITALIZED"
 STAGING_DIR="dmg_stage"
 DIST_DIR="dist"
+APP_BUNDLE_DIST="${APP_NAME_CAPITALIZED}_${VERSION}_${ARCH}.app"
 
 echo "Building $APP_NAME v$VERSION..."
 shards install
@@ -116,6 +118,7 @@ hdiutil create "$DMG_NAME" \
 rm -rf "$STAGING_DIR"
 
 mv "$DMG_NAME" "$DIST_DIR/"
-mv "$APP_BUNDLE" "$DIST_DIR/"
+mv "$APP_BUNDLE" "$DIST_DIR/$APP_BUNDLE_DIST"
 
 echo "Created: dist/$DMG_NAME"
+echo "Created: dist/$APP_BUNDLE_DIST"

@@ -18,7 +18,9 @@ if ($env:INNO_SETUP_PATH) {
 
 $EXECUTABLE_PATH = "bin\$APP_NAME.exe"
 $DIST_DIR = "dist"
-$INSTALLER_NAME = "$APP_NAME-setup.exe"
+$ARCH = "mingw64"
+$INSTALLER_BASE = "${APP_NAME}_${VERSION}_${ARCH}_setup"
+$INSTALLER_NAME = "$INSTALLER_BASE.exe"
 $ISS_FILE = "$APP_NAME.iss"
 $OUTPUT_DIR = "Output"
 
@@ -107,7 +109,7 @@ AppVersion=$VERSION
 DefaultDirName={userpf}\$APP_NAME_CAPITALIZED
 DefaultGroupName=$APP_NAME_CAPITALIZED
 OutputDir=$OUTPUT_DIR
-OutputBaseFilename=$APP_NAME-setup
+OutputBaseFilename=$INSTALLER_BASE
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -130,12 +132,16 @@ $issContent | Out-File -FilePath $ISS_FILE -Encoding UTF8
 
 & $ISCC $ISS_FILE
 
-Copy-Item $EXECUTABLE_PATH $DIST_DIR\ | Out-Null
-if (Test-Path "$OUTPUT_DIR\$INSTALLER_NAME") {
-    Move-Item "$OUTPUT_DIR\$INSTALLER_NAME" $DIST_DIR\
+# Copy versioned standalone exe
+$exeOut = Join-Path $DIST_DIR ("${APP_NAME}_${VERSION}_${ARCH}.exe")
+Copy-Item $EXECUTABLE_PATH $exeOut -Force | Out-Null
+# Move versioned installer
+if (Test-Path (Join-Path $OUTPUT_DIR $INSTALLER_NAME)) {
+    Move-Item (Join-Path $OUTPUT_DIR $INSTALLER_NAME) $DIST_DIR -Force
 }
 
 Remove-Item $OUTPUT_DIR -Recurse -Force
 Remove-Item $ISS_FILE
 
+Write-Host "Created: dist\${APP_NAME}_${VERSION}_${ARCH}.exe"
 Write-Host "Created: dist\$INSTALLER_NAME"
