@@ -3,17 +3,16 @@ name: Build Debian Package
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Install Crystal
-        uses: crystal-lang/install-crystal@v1
+      - uses: crystal-lang/install-crystal@v1
         with:
           crystal: latest
 
@@ -40,3 +39,19 @@ jobs:
           name: memo-debian
           path: |
             dist/*.deb
+
+      - run: ls -lh dist
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*

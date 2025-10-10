@@ -3,17 +3,16 @@ name: Build MinGW Package
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Setup MSYS2 (MinGW64)
-        uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
@@ -55,3 +54,19 @@ jobs:
           path: |
             dist/*.exe
             dist/*.zip
+
+      - run: ls -lh dist
+
+      - name: Create GitHub Release (tagged)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*
