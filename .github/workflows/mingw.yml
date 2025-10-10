@@ -55,7 +55,7 @@ jobs:
             dist/*.exe
             dist/*.zip
 
-      - run: ls -lh dist
+      - run: ls dist
 
       - name: Create GitHub Release (tagged)
         if: startsWith(github.ref, 'refs/tags/v')
