@@ -5,6 +5,7 @@
 *.dwarf
 *.lock
 
+/_wv2
 /dist
 
 *.ico
