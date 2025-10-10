@@ -30,32 +30,17 @@ jobs:
             mingw-w64-x86_64-openssl
             mingw-w64-x86_64-sqlite3
 
-      - name: Fetch WebView2 headers (NuGet)
+      - name: Build (MinGW) via script
         shell: msys2 {0}
         env:
           WV2_VER: 1.0.1150.38
         run: |
-          mkdir -p _wv2 && cd _wv2
-          curl -L "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WV2_VER}" -o webview2.nupkg
-          unzip -q webview2.nupkg build/native/include/*.h
+          bash build-mingw.sh
 
       - name: Install Inno Setup
         run: |
           choco install innosetup -y
           echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
-
-      - name: Build Crystal executable
-        shell: msys2 {0}
-        env:
-          CXX: "g++ -I${{ github.workspace }}/_wv2/build/native/include"
-          CXXFLAGS: "-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
-        run: |
-          shards install --without-development
-          # Test with cygpath -m for mixed-mode path conversion
-          LINKDIR=$(cygpath -m "$(pwd)/lib/webview/ext")
-          echo "Using LINKDIR=$LINKDIR"
-          shards build --release --no-debug --static -Dpreview_mt -Dexecution_context \
-            --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
 
       - name: Create installer with Inno Setup
         env:
