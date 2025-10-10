@@ -69,4 +69,4 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/*-setup.exe
+            dist/*mingw64.exe
