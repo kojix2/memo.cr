@@ -28,7 +28,7 @@ cat > "$TEMP_DIR/usr/share/applications/$APP_NAME.desktop" <<EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=MD5 Checker
+Name=$APP_NAME
 Comment=$DESCRIPTION
 Exec=$APP_NAME
 Icon=$APP_NAME
