@@ -8,6 +8,10 @@ Practice with [WebView](https://github.com/naqvis/webview)
 
 <img width="1012" height="712" alt="image" src="https://github.com/user-attachments/assets/f1612da2-7e5c-494e-8df7-2b99e39cf396" />
 
+- This project was made to explore how to build and distribute apps with Crystal and WebView in a simple and practical way.
+
+- It’s not meant to be a serious note-taking app, though I do plan to use it from time to time myself.
+
 ## Installation
 
 ```sh
