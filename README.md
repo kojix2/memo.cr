@@ -1,6 +1,8 @@
 # memo
 
-[![Build](https://github.com/kojix2/memo.cr/actions/workflows/build.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/build.yml)
+[![Build macOS Package](https://github.com/kojix2/memo.cr/actions/workflows/mac.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/mac.yml)
+[![Build MinGW Package](https://github.com/kojix2/memo.cr/actions/workflows/mingw.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/mingw.yml)
+[![Build Debian Package](https://github.com/kojix2/memo.cr/actions/workflows/deb.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/deb.yml)
 [![Lines of Code](https://img.shields.io/endpoint?url=https%3A%2F%2Ftokei.kojix2.net%2Fbadge%2Fgithub%2Fkojix2%2Fmemo.cr%2Flines)](https://tokei.kojix2.net/github/kojix2/memo.cr)
 ![Static Badge](https://img.shields.io/badge/PURE-VIBE_CODING-magenta)
 
