@@ -48,7 +48,7 @@ jobs:
           powershell.exe -ExecutionPolicy Bypass -File package-win.ps1
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: memo-windows-mingw
           path: |
