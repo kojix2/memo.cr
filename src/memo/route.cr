@@ -68,6 +68,14 @@ module Memo
     "ok"
   end
 
+  # Application info endpoint
+  get "/api/info" do |env|
+    note_count = Memo::DBX.db.query_one("select count(*) from notes", as: Int64)
+    db_path = Memo::DBX.db_path
+    env.response.content_type = "application/json; charset=utf-8"
+    {version: Memo::VERSION, db_path: db_path, note_count: note_count}.to_json
+  end
+
   # Minimal export endpoint (no auth, local desktop assumption)
   get "/export.json" do |env|
     rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}

@@ -3,6 +3,14 @@
   <p style="margin:0 0 24px;font-size:14px;opacity:.7;">Basic maintenance utilities for your local notes.</p>
 
   <section style="margin-bottom:32px;">
+    <h2 style="font-size:18px;margin:0 0 8px;">Information</h2>
+    <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Application and database information.</p>
+    <div id="info-section" style="background:#faf8f3;border:1px solid #e0d8a8;border-radius:6px;padding:12px;font-size:13px;">
+      <p style="margin:0;opacity:.7;">Loading...</p>
+    </div>
+  </section>
+
+  <section style="margin-bottom:32px;">
     <h2 style="font-size:18px;margin:0 0 8px;">Export</h2>
     <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Download your notes in different formats.</p>
     <ul style="list-style:none;padding:0;margin:0;display:flex;gap:12px;flex-wrap:wrap;">
@@ -19,3 +27,22 @@
 .btn-link { display:inline-block;padding:8px 14px;border:1px solid #e0d8a8;border-radius:6px;background:#f7f3d3;color:#6d5a44;font-size:13px;text-decoration:none; }
 .btn-link:hover { background:#f0e7b8; }
 </style>
+
+<script>
+fetch('/api/info')
+  .then(response => response.json())
+  .then(data => {
+    const section = document.getElementById('info-section');
+    section.innerHTML = `
+      <div style="display:grid;gap:8px;">
+        <div><span style="opacity:.7;">Version:</span> ${data.version}</div>
+        <div><span style="opacity:.7;">Database Path:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px;">${data.db_path}</code></div>
+        <div><span style="opacity:.7;">Total Notes:</span> ${data.note_count}</div>
+      </div>
+    `;
+  })
+  .catch(error => {
+    const section = document.getElementById('info-section');
+    section.innerHTML = `<p style="margin:0;color:#d9534f;">Error loading info: ${error.message}</p>`;
+  });
+</script>
