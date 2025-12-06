@@ -16,9 +16,15 @@ if ($env:INNO_SETUP_PATH) {
     $INNO_SETUP_PATH = $env:INNO_SETUP_PATH
 }
 
-$EXECUTABLE_PATH = "bin\$APP_NAME.exe"
+# ARCH detection: env > .env (already loaded) > MSYSTEM hint > default
+if (-not (Get-Variable -Name ARCH -ErrorAction SilentlyContinue)) { $ARCH = $null }
+if ($env:ARCH) { $ARCH = $env:ARCH }
+elseif ($env:MSYSTEM -match 'UCRT64') { $ARCH = 'ucrt64' }
+elseif ($env:MSYSTEM -match 'MINGW64') { $ARCH = 'mingw64' }
+if (-not $ARCH) { $ARCH = 'mingw64' }
+
+$EXECUTABLE_PATH = "bin/$APP_NAME.exe"
 $DIST_DIR = "dist"
-$ARCH = "mingw64"
 $INSTALLER_BASE = "${APP_NAME}_${VERSION}_${ARCH}_setup"
 $INSTALLER_NAME = "$INSTALLER_BASE.exe"
 $ISS_FILE = "$APP_NAME.iss"
