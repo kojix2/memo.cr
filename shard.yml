@@ -1,5 +1,6 @@
 name: memo
 version: 0.0.3 # Don't forget to update the .env file
+repository: https://github.com/kojix2/memo.cr
 
 authors:
   - kojix2 <2xijok@gmail.com>
