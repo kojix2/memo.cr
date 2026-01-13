@@ -22,10 +22,26 @@ shards build --release -Dpreview_mt -Dexecution_context
 
 Generate app package for your platform:
 
+Debian/Ubuntu
+
 ```sh
 ./build-deb.sh   # for Debian/Ubuntu
-./build-mac.sh   # for macOS
-./build-mingw.sh # for Windows
+```
+
+macOS
+
+```sh
+./build-mac.sh
+```
+
+Windows
+
+```sh
+bash build-mingw.sh
+```
+
+```
+powershell.exe -ExecutionPolicy Bypass -File package-win.ps1 # INNO SETUP
 ```
 
 ## Usage
