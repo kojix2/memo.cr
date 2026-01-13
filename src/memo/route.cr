@@ -73,7 +73,7 @@ module Memo
     note_count = Memo::DBX.db.query_one("select count(*) from notes", as: Int64)
     db_path = Memo::DBX.db_path
     env.response.content_type = "application/json; charset=utf-8"
-    {version: Memo::VERSION, db_path: db_path, note_count: note_count}.to_json
+    {version: Memo::VERSION, db_path: db_path, note_count: note_count, repository_url: Memo::REPOSITORY_URL}.to_json
   end
 
   # Minimal export endpoint (no auth, local desktop assumption)
