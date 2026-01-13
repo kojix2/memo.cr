@@ -20,6 +20,14 @@ Practice with [WebView](https://github.com/naqvis/webview)
 shards build --release -Dpreview_mt -Dexecution_context
 ```
 
+Generate app package for your platform:
+
+```sh
+./build-deb.sh   # for Debian/Ubuntu
+./build-mac.sh   # for macOS
+./build-mingw.sh # for Windows
+```
+
 ## Usage
 
 ```
