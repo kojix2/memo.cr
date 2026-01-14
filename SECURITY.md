@@ -3,6 +3,16 @@
 **Author:** ChatGPT 5.2 + GitHub Copilot  
 **Created:** 2026-01-14
 
+## Implemented Mitigations (P0)
+
+As of 2026-01-14, the following P0 mitigations are implemented:
+
+- The embedded Kemal server is explicitly bound to loopback (`127.0.0.1`) to prevent accidental LAN exposure.
+- A per-launch random token is generated at startup and required for:
+  - All state-changing requests (non-GET)
+  - Sensitive read endpoints (`/api/info`, `/export.json`)
+- The UI attaches this token to requests via `X-Memo-Token` (fetch) or `memo_token` (forms/query).
+
 This project is a desktop application built with **Crystal + WebView**, but it also embeds a **local Kemal HTTP server** and loads the UI over `http://localhost:<port>`.
 
 Unlike frameworks such as Tauri that provide strict, opt-in APIs and hardened defaults, this application is much closer to a regular web app running on a local HTTP port. As a result, the primary security posture depends on how the local server is bound, what endpoints exist, and what data is exposed.

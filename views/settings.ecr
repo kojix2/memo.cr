@@ -14,7 +14,7 @@
     <h2 style="font-size:18px;margin:0 0 8px;">Export</h2>
     <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Download your notes in different formats.</p>
     <ul style="list-style:none;padding:0;margin:0;display:flex;gap:12px;flex-wrap:wrap;">
-      <li><a class="btn-link" href="/export.json">Export JSON</a></li>
+      <li><a class="btn-link" id="export-json" href="#">Export JSON</a></li>
     </ul>
   </section>
 
@@ -29,7 +29,13 @@
 </style>
 
 <script>
-fetch('/api/info')
+const memoToken = (document.querySelector('meta[name="memo-token"]')?.getAttribute('content')) || '';
+
+// Attach token to export link (GET cannot easily add headers with a normal link)
+const exportLink = document.getElementById('export-json');
+if (exportLink) exportLink.href = '/export.json?memo_token=' + encodeURIComponent(memoToken);
+
+fetch('/api/info', { headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken } })
   .then(response => response.json())
   .then(data => {
     const section = document.getElementById('info-section');

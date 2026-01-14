@@ -52,6 +52,7 @@
 </div>
 
 <script>
+const memoToken = (document.querySelector('meta[name="memo-token"]')?.getAttribute('content')) || '';
 let currentNoteId = <%= notes.empty? || !selected_note ? "null" : selected_note[0] %>;
 let originalTitle = '';
 let originalBody = '';
@@ -128,11 +129,16 @@ async function createNewNote() {
     titleInput.name = 'title';
     titleInput.value = title;
 
+    const tokenInput = document.createElement('input');
+    tokenInput.name = 'memo_token';
+    tokenInput.value = memoToken;
+
     const bodyInput = document.createElement('textarea');
     bodyInput.name = 'body';
     bodyInput.value = '';
 
     form.appendChild(titleInput);
+    form.appendChild(tokenInput);
     form.appendChild(bodyInput);
     document.body.appendChild(form);
     form.submit();
@@ -152,9 +158,10 @@ async function saveNote(noteId, silent = true) {
     const fd = new FormData();
     fd.append('title', title);
     fd.append('body', body);
+    fd.append('memo_token', memoToken);
     saving = true;
     try {
-        const res = await fetch('/notes/' + noteId + '/update', { method: 'POST', body: fd, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+        const res = await fetch('/notes/' + noteId + '/update', { method: 'POST', body: fd, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-Memo-Token': memoToken } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json().catch(()=>({status:'error'}));
     if (json.status !== 'success') throw new Error('Save failed');
@@ -204,6 +211,7 @@ function saveNoteBeacon(noteId){
     const fd = new FormData();
     fd.append('title', titleEl.value);
     fd.append('body', bodyEl.value);
+    fd.append('memo_token', memoToken);
     if (navigator.sendBeacon) navigator.sendBeacon('/notes/' + noteId + '/update', fd);
 }
 
@@ -224,6 +232,12 @@ function deleteNote(noteId) {
         form.method = 'POST';
         form.action = '/notes/' + noteId + '/delete';
         form.style.display = 'none';
+
+        const tokenInput = document.createElement('input');
+        tokenInput.name = 'memo_token';
+        tokenInput.value = memoToken;
+
+        form.appendChild(tokenInput);
         document.body.appendChild(form);
         form.submit();
     }

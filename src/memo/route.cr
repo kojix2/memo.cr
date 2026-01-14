@@ -3,6 +3,7 @@ require "kemal"
 require "html"
 require "ecr"
 require "./db"
+require "./security"
 
 module Memo
   Memo::DBX.setup
@@ -40,6 +41,38 @@ module Memo
 
   def self.h(s) : String
     HTML.escape(s.to_s)
+  end
+
+  private def self.extract_token(env) : String?
+    env.request.headers["X-Memo-Token"]? ||
+      env.params.query["memo_token"]? ||
+      env.params.body["memo_token"]?.try(&.to_s)
+  rescue
+    env.request.headers["X-Memo-Token"]?
+  end
+
+  private def self.token_protected?(env) : Bool
+    # Protect all state-changing requests and sensitive reads.
+    return true if env.request.method != "GET"
+    path = env.request.path
+    path == "/export.json" || path == "/api/info"
+  end
+
+  before_all do |env|
+    if token_protected?(env)
+      unless Memo::Security.enabled?
+        env.response.content_type = "application/json; charset=utf-8"
+        err_json = {status: "error", message: "security token not initialized"}.to_json
+        halt env, status_code: 500, response: err_json
+      end
+
+      provided = extract_token(env)
+      if provided != Memo::Security.token
+        env.response.content_type = "application/json; charset=utf-8"
+        err_json = {status: "error", message: "forbidden"}.to_json
+        halt env, status_code: 403, response: err_json
+      end
+    end
   end
 
   get "/" do |env|

@@ -1,5 +1,7 @@
 require "log"
 require "webview"
+require "random/secure"
+require "./security"
 
 # Configure logging from LOG_LEVEL (default info); relies on Crystal's std Log.setup_from_env
 Log.setup_from_env
@@ -21,17 +23,31 @@ module Memo
 
     def initialize(@debug = false)
       @port = find_available_port
-      @kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
+
+      # P0: Generate a per-launch secret token and force loopback binding.
+      Memo::Security.token = Random::Secure.hex(32)
+      Kemal.config.host_binding = "127.0.0.1"
     end
 
     def run
-      @server_fiber = @kemal_context.spawn do
-        begin
-          Kemal.run(port: @port, trap_signal: false)
-        rescue ex
-          puts "Server error: #{ex.message}" if @debug
+      {% if flag?(:execution_context) %}
+        kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
+        @server_fiber = kemal_context.spawn do
+          begin
+            Kemal.run(port: @port, args: nil, trap_signal: false)
+          rescue ex
+            puts "Server error: #{ex.message}" if @debug
+          end
         end
-      end
+      {% else %}
+        @server_fiber = spawn do
+          begin
+            Kemal.run(port: @port, args: nil, trap_signal: false)
+          rescue ex
+            puts "Server error: #{ex.message}" if @debug
+          end
+        end
+      {% end %}
 
       at_exit do
         cleanup
@@ -45,7 +61,7 @@ module Memo
       wait_for_server_start
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
-      wv.navigate("http://localhost:#{@port}")
+      wv.navigate("http://127.0.0.1:#{@port}")
       wv.run
       wv.destroy
 
@@ -87,7 +103,7 @@ module Memo
     end
 
     private def server_listening?
-      TCPSocket.new("localhost", @port).close
+      TCPSocket.new("127.0.0.1", @port).close
       true
     rescue Socket::ConnectError
       false
