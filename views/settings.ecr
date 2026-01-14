@@ -44,7 +44,7 @@ fetch('/api/info', { headers: { 'Accept': 'application/json', 'X-Memo-Token': me
         <div><span style="opacity:.7;">Version:</span> ${data.version}</div>
         <div><span style="opacity:.7;">Database Path:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px;">${data.db_path}</code></div>
         <div><span style="opacity:.7;">Total Notes:</span> ${data.note_count}</div>
-        <div><span style="opacity:.7;">Source Code:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px;">${data.repository_url}</code></div>
+        <div><span style="opacity:.7;">Source Code:</span> ${data.repository_url}</div>
       </div>
     `;
   })
