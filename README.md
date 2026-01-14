@@ -28,6 +28,12 @@ Debian/Ubuntu
 ./build-deb.sh   # for Debian/Ubuntu
 ```
 
+Fedora/openSUSE (RPM)
+
+```sh
+./build-rpm.sh
+```
+
 macOS
 
 ```sh
