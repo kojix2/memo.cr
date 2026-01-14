@@ -1,5 +1,5 @@
 name: memo
-version: 0.0.4 # Don't forget to update the .env file
+version: 0.0.5 # Don't forget to update the .env file
 repository: https://github.com/kojix2/memo.cr
 
 authors:
