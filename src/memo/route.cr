@@ -58,8 +58,44 @@ module Memo
     path == "/export.json" || path == "/api/info"
   end
 
+  private def self.allowed_origins : Array(String)
+    port = Kemal.config.port
+    ["http://127.0.0.1:#{port}", "http://localhost:#{port}"]
+  end
+
+  private def self.same_origin?(env) : Bool
+    origins = allowed_origins
+
+    if origin = env.request.headers["Origin"]?
+      return origins.includes?(origin)
+    end
+
+    if referer = env.request.headers["Referer"]?
+      return origins.any? { |o| referer.starts_with?(o) }
+    end
+
+    false
+  end
+
   before_all do |env|
     if token_protected?(env)
+      # P1: Mitigate CSRF-like localhost abuse by requiring same-origin requests.
+      # Enforce Origin when present; otherwise fall back to Referer.
+      # If neither header exists, reject the request.
+      unless same_origin?(env)
+        env.response.content_type = "application/json; charset=utf-8"
+        err_json = {status: "error", message: "forbidden"}.to_json
+        halt env, status_code: 403, response: err_json
+      end
+
+      if sfs = env.request.headers["Sec-Fetch-Site"]?
+        unless sfs == "same-origin" || sfs == "none"
+          env.response.content_type = "application/json; charset=utf-8"
+          err_json = {status: "error", message: "forbidden"}.to_json
+          halt env, status_code: 403, response: err_json
+        end
+      end
+
       unless Memo::Security.enabled?
         env.response.content_type = "application/json; charset=utf-8"
         err_json = {status: "error", message: "security token not initialized"}.to_json
