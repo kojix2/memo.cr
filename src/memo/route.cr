@@ -15,8 +15,7 @@ module Memo
   # Per-request lightweight timing (only active when debug logging is enabled)
   before_all do |env|
     if LOGGER.level <= ::Log::Severity::Debug
-      # Store monotonic timestamp as Int64 nanoseconds (allowed StoreTypes)
-      env.set "__memo_req_start_instant", Time.instant
+      env.set "__memo_req_start_time", Time.utc.to_unix_f
       env.set "__memo_req_id", Random::Secure.hex(4)
       rid = (env.get("__memo_req_id") rescue nil)
       LOGGER.debug { "request begin id=#{rid} #{env.request.method} #{env.request.path}" }
@@ -25,11 +24,10 @@ module Memo
 
   after_all do |env|
     if LOGGER.level <= ::Log::Severity::Debug
-      start_instant = (env.get("__memo_req_start_instant") rescue nil)
+      start_time = (env.get("__memo_req_start_time") rescue nil)
       rid = (env.get("__memo_req_id") rescue nil)
-      if start_instant.is_a?(Time::Instant)
-        span = Time.instant - start_instant
-        dur_ms = span.total_milliseconds.round(1)
+      if start_time.is_a?(Float64)
+        dur_ms = ((Time.utc.to_unix_f - start_time) * 1000).round(1)
         LOGGER.debug { "request end id=#{rid} status=#{env.response.status_code} duration_ms=#{dur_ms}" }
       end
     end
