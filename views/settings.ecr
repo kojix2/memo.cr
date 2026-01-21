@@ -1,149 +1,91 @@
-<div class="settings-container" style="max-width:760px;margin:40px auto;font-family:-apple-system,sans-serif;color:#5a4d3a;">
-  <h1 style="font-size:26px;margin-bottom:8px;">Settings</h1>
-  <p style="margin:0 0 24px;font-size:14px;opacity:.7;">Basic maintenance utilities for your local notes.</p>
+<div class="settings-page">
+<div class="settings-container">
+  <h1>Settings</h1>
+  <p class="desc">Basic maintenance utilities for your local notes.</p>
 
-  <section style="margin-bottom:32px;">
-    <h2 style="font-size:18px;margin:0 0 8px;">Information</h2>
-    <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Application and database information.</p>
-    <div id="info-section" style="background:#faf8f3;border:1px solid #e0d8a8;border-radius:6px;padding:12px;font-size:13px;">
-      <p style="margin:0;opacity:.7;">Loading...</p>
-    </div>
+  <section>
+    <h2>Information</h2>
+    <div id="info-section" class="card"><p style="opacity:.7">Loading...</p></div>
   </section>
 
-  <section style="margin-bottom:32px;">
-    <h2 style="font-size:18px;margin:0 0 8px;">Export</h2>
-    <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Download your notes in different formats.</p>
-    <ul style="list-style:none;padding:0;margin:0;display:flex;gap:12px;flex-wrap:wrap;">
-      <li><a class="btn-link" id="export-json" href="#">Export JSON</a></li>
-    </ul>
+  <section>
+    <h2>Export</h2>
+    <div class="card"><a class="btn" id="export-json" href="#">Export JSON</a></div>
   </section>
 
-  <section style="margin-bottom:32px;">
-    <h2 style="font-size:18px;margin:0 0 8px;">Editor</h2>
-    <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Customize the editor appearance.</p>
-
-    <div style="background:#faf8f3;border:1px solid #e0d8a8;border-radius:6px;padding:12px;font-size:13px;">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <label for="editor-font-size" style="opacity:.8;">Body font size (px):</label>
-        <input id="editor-font-size" type="number" min="10" max="32" step="1" value="16"
-          style="width:96px;padding:6px 8px;border:1px solid #e0d8a8;border-radius:6px;background:#fff;" />
-        <button class="btn-link" id="save-editor-font" type="button">Save</button>
-        <span id="editor-font-status" style="opacity:.7;"></span>
+  <section>
+    <h2>Editor</h2>
+    <div class="card">
+      <div class="row">
+        <label for="editor-font-size">Body font size (px)</label>
+        <input id="editor-font-size" type="number" min="10" max="32" step="1" value="16"/>
+        <button class="btn" id="save-editor-font">Save</button>
+        <span id="editor-font-status"></span>
       </div>
-      <p id="editor-font-hint" style="margin:10px 0 0;opacity:.7;">Loading current setting...</p>
+      <p id="editor-font-hint" class="hint">Loading...</p>
     </div>
   </section>
 
-  <nav style="margin-top:40px;">
-    <a href="/" style="text-decoration:none;color:#8b7355;">← Back to notes</a>
-  </nav>
+  <nav><a href="/">← Back to notes</a></nav>
+</div>
 </div>
 
 <style>
-.btn-link { display:inline-block;padding:8px 14px;border:1px solid #e0d8a8;border-radius:6px;background:#f7f3d3;color:#6d5a44;font-size:13px;text-decoration:none; }
-.btn-link:hover { background:#f0e7b8; }
+.settings-page { position:absolute; inset:0; overflow-y:auto; background:#f7f3d3; }
+.settings-container { max-width:700px; margin:0 auto; padding:40px 24px 60px; color:#5a4d3a; }
+.settings-container h1 { font-size:24px; margin:0 0 6px; color:#6d5a44; }
+.settings-container .desc { font-size:14px; opacity:.7; margin:0 0 28px; }
+.settings-container section { margin-bottom:24px; }
+.settings-container h2 { font-size:15px; margin:0 0 8px; color:#6d5a44; }
+.card { background:#faf8f3; border:1px solid #e0d8a8; border-radius:6px; padding:12px 14px; font-size:13px; }
+.row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.row label { opacity:.85; }
+.row input { width:70px; padding:5px 8px; border:1px solid #e0d8a8; border-radius:5px; }
+.hint { margin:8px 0 0; font-size:12px; opacity:.6; }
+.btn { display:inline-block; padding:6px 12px; border:1px solid #e0d8a8; border-radius:5px; background:#f7f3d3; color:#6d5a44; font-size:13px; text-decoration:none; cursor:pointer; }
+.btn:hover { background:#f0e7b8; }
+nav { margin-top:32px; padding-top:16px; border-top:1px solid #e6ddb3; }
+nav a { color:#8b7355; text-decoration:none; font-size:14px; }
+nav a:hover { color:#6d5a44; }
 </style>
 
 <script>
-const memoToken = (document.querySelector('meta[name="memo-token"]')?.getAttribute('content')) || '';
+const T = document.querySelector('meta[name="memo-token"]')?.content || '';
+const $ = id => document.getElementById(id);
 
-// Attach token to export link (GET cannot easily add headers with a normal link)
-const exportLink = document.getElementById('export-json');
-if (exportLink) exportLink.href = '/export.json?memo_token=' + encodeURIComponent(memoToken);
+$('export-json').href = '/export.json?memo_token=' + encodeURIComponent(T);
 
-fetch('/api/info', { headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken } })
-  .then(response => response.json())
-  .then(data => {
-    const section = document.getElementById('info-section');
-    section.innerHTML = `
-      <div style="display:grid;gap:8px;">
-        <div><span style="opacity:.7;">Version:</span> ${data.version}</div>
-        <div><span style="opacity:.7;">Database Path:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px;">${data.db_path}</code></div>
-        <div><span style="opacity:.7;">Total Notes:</span> ${data.note_count}</div>
-        <div><span style="opacity:.7;">Source Code:</span> ${data.repository_url}</div>
-      </div>
-    `;
-  })
-  .catch(error => {
-    const section = document.getElementById('info-section');
-    section.innerHTML = `<p style="margin:0;color:#d9534f;">Error loading info: ${error.message}</p>`;
-  });
+fetch('/api/info', {headers:{'X-Memo-Token':T}}).then(r=>r.json()).then(d=>{
+  $('info-section').innerHTML = `<div style="display:grid;gap:6px">
+    <div><span style="opacity:.7">Version:</span> ${d.version}</div>
+    <div><span style="opacity:.7">DB:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px">${d.db_path}</code></div>
+    <div><span style="opacity:.7">Notes:</span> ${d.note_count}</div>
+    <div><span style="opacity:.7">Source:</span> ${d.repository_url}</div>
+  </div>`;
+}).catch(e=>{ $('info-section').innerHTML = `<p style="color:#d9534f">${e.message}</p>`; });
 
-// Editor font size settings
-const fontInput = document.getElementById('editor-font-size');
-const fontSaveBtn = document.getElementById('save-editor-font');
-const fontStatus = document.getElementById('editor-font-status');
-const fontHint = document.getElementById('editor-font-hint');
+const fontIn = $('editor-font-size'), fontSt = $('editor-font-status'), fontHint = $('editor-font-hint');
+const setSize = px => { if(Number.isFinite(px)) document.documentElement.style.setProperty('--editor-font-size',px+'px'); };
+const setSt = (m,err) => { fontSt.textContent=m; fontSt.style.color=err?'#d9534f':'#6d5a44'; };
 
-function setRootFontSize(px) {
-  if (!Number.isFinite(px)) return;
-  document.documentElement.style.setProperty('--editor-font-size', `${px}px`);
-}
+fetch('/api/settings', {headers:{'X-Memo-Token':T}}).then(r=>r.json()).then(d=>{
+  const {min_editor_font_size_px:mn=10, max_editor_font_size_px:mx=32, editor_font_size_px:cur=16} = d.ui||{};
+  fontIn.min=mn; fontIn.max=mx; fontIn.value=cur;
+  fontHint.textContent = `Range: ${mn}–${mx}px`;
+  setSize(cur);
+}).catch(e=>{ fontHint.textContent = e.message; });
 
-function setStatus(msg, isError) {
-  if (!fontStatus) return;
-  fontStatus.textContent = msg || '';
-  fontStatus.style.color = isError ? '#d9534f' : '#6d5a44';
-}
+fontIn.oninput = () => { setSize(Number(fontIn.value)); setSt('',0); };
 
-fetch('/api/settings', { headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken } })
-  .then(r => r.json())
-  .then(data => {
-    const min = data?.ui?.min_editor_font_size_px ?? 10;
-    const max = data?.ui?.max_editor_font_size_px ?? 32;
-    const current = data?.ui?.editor_font_size_px ?? 16;
-    if (fontInput) {
-      fontInput.min = String(min);
-      fontInput.max = String(max);
-      fontInput.value = String(current);
-    }
-    if (fontHint) fontHint.textContent = `Allowed range: ${min}–${max}px`;
-    setRootFontSize(Number(current));
-  })
-  .catch(err => {
-    if (fontHint) fontHint.textContent = `Error loading setting: ${err.message}`;
-  });
-
-if (fontInput) {
-  fontInput.addEventListener('input', () => {
-    const v = Number(fontInput.value);
-    setRootFontSize(v);
-    setStatus('', false);
-  });
-}
-
-if (fontSaveBtn) {
-  fontSaveBtn.addEventListener('click', () => {
-    const v = Number(fontInput?.value);
-    if (!Number.isFinite(v)) {
-      setStatus('Invalid number', true);
-      return;
-    }
-    setStatus('Saving...', false);
-    const body = new URLSearchParams();
-    body.set('editor_font_size_px', String(Math.trunc(v)));
-    body.set('memo_token', memoToken);
-    fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    })
-      .then(async r => {
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(data?.message || 'Failed to save');
-        return data;
-      })
-      .then(data => {
-        const saved = data?.ui?.editor_font_size_px;
-        if (Number.isFinite(saved)) {
-          if (fontInput) fontInput.value = String(saved);
-          setRootFontSize(Number(saved));
-        }
-        setStatus('Saved', false);
-      })
-      .catch(err => {
-        setStatus(err.message, true);
-      });
-  });
-}
+$('save-editor-font').onclick = () => {
+  const v = Math.trunc(Number(fontIn.value));
+  if(!Number.isFinite(v)) return setSt('Invalid',1);
+  setSt('Saving...',0);
+  fetch('/api/settings', {
+    method:'POST', headers:{'X-Memo-Token':T,'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({editor_font_size_px:v, memo_token:T})
+  }).then(async r=>{ const d=await r.json(); if(!r.ok) throw new Error(d.message||'Failed'); return d; })
+    .then(d=>{ const s=d.ui?.editor_font_size_px; if(s){fontIn.value=s; setSize(s);} setSt('Saved',0); })
+    .catch(e=>setSt(e.message,1));
+};
 </script>
