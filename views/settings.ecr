@@ -18,6 +18,22 @@
     </ul>
   </section>
 
+  <section style="margin-bottom:32px;">
+    <h2 style="font-size:18px;margin:0 0 8px;">Editor</h2>
+    <p style="margin:0 0 12px;font-size:13px;opacity:.8;">Customize the editor appearance.</p>
+
+    <div style="background:#faf8f3;border:1px solid #e0d8a8;border-radius:6px;padding:12px;font-size:13px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <label for="editor-font-size" style="opacity:.8;">Body font size (px):</label>
+        <input id="editor-font-size" type="number" min="10" max="32" step="1" value="16"
+          style="width:96px;padding:6px 8px;border:1px solid #e0d8a8;border-radius:6px;background:#fff;" />
+        <button class="btn-link" id="save-editor-font" type="button">Save</button>
+        <span id="editor-font-status" style="opacity:.7;"></span>
+      </div>
+      <p id="editor-font-hint" style="margin:10px 0 0;opacity:.7;">Loading current setting...</p>
+    </div>
+  </section>
+
   <nav style="margin-top:40px;">
     <a href="/" style="text-decoration:none;color:#8b7355;">← Back to notes</a>
   </nav>
@@ -52,4 +68,82 @@ fetch('/api/info', { headers: { 'Accept': 'application/json', 'X-Memo-Token': me
     const section = document.getElementById('info-section');
     section.innerHTML = `<p style="margin:0;color:#d9534f;">Error loading info: ${error.message}</p>`;
   });
+
+// Editor font size settings
+const fontInput = document.getElementById('editor-font-size');
+const fontSaveBtn = document.getElementById('save-editor-font');
+const fontStatus = document.getElementById('editor-font-status');
+const fontHint = document.getElementById('editor-font-hint');
+
+function setRootFontSize(px) {
+  if (!Number.isFinite(px)) return;
+  document.documentElement.style.setProperty('--editor-font-size', `${px}px`);
+}
+
+function setStatus(msg, isError) {
+  if (!fontStatus) return;
+  fontStatus.textContent = msg || '';
+  fontStatus.style.color = isError ? '#d9534f' : '#6d5a44';
+}
+
+fetch('/api/settings', { headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken } })
+  .then(r => r.json())
+  .then(data => {
+    const min = data?.ui?.min_editor_font_size_px ?? 10;
+    const max = data?.ui?.max_editor_font_size_px ?? 32;
+    const current = data?.ui?.editor_font_size_px ?? 16;
+    if (fontInput) {
+      fontInput.min = String(min);
+      fontInput.max = String(max);
+      fontInput.value = String(current);
+    }
+    if (fontHint) fontHint.textContent = `Allowed range: ${min}–${max}px`;
+    setRootFontSize(Number(current));
+  })
+  .catch(err => {
+    if (fontHint) fontHint.textContent = `Error loading setting: ${err.message}`;
+  });
+
+if (fontInput) {
+  fontInput.addEventListener('input', () => {
+    const v = Number(fontInput.value);
+    setRootFontSize(v);
+    setStatus('', false);
+  });
+}
+
+if (fontSaveBtn) {
+  fontSaveBtn.addEventListener('click', () => {
+    const v = Number(fontInput?.value);
+    if (!Number.isFinite(v)) {
+      setStatus('Invalid number', true);
+      return;
+    }
+    setStatus('Saving...', false);
+    const body = new URLSearchParams();
+    body.set('editor_font_size_px', String(Math.trunc(v)));
+    body.set('memo_token', memoToken);
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'X-Memo-Token': memoToken, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    })
+      .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.message || 'Failed to save');
+        return data;
+      })
+      .then(data => {
+        const saved = data?.ui?.editor_font_size_px;
+        if (Number.isFinite(saved)) {
+          if (fontInput) fontInput.value = String(saved);
+          setRootFontSize(Number(saved));
+        }
+        setStatus('Saved', false);
+      })
+      .catch(err => {
+        setStatus(err.message, true);
+      });
+  });
+}
 </script>

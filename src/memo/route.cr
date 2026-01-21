@@ -4,6 +4,7 @@ require "html"
 require "ecr"
 require "./db"
 require "./security"
+require "./settings"
 
 module Memo
   Memo::DBX.setup
@@ -15,7 +16,7 @@ module Memo
   before_all do |env|
     if LOGGER.level <= ::Log::Severity::Debug
       # Store monotonic timestamp as Int64 nanoseconds (allowed StoreTypes)
-      env.set "__memo_req_start_ns", Time.monotonic.total_nanoseconds
+      env.set "__memo_req_start_instant", Time.instant
       env.set "__memo_req_id", Random::Secure.hex(4)
       rid = (env.get("__memo_req_id") rescue nil)
       LOGGER.debug { "request begin id=#{rid} #{env.request.method} #{env.request.path}" }
@@ -24,11 +25,11 @@ module Memo
 
   after_all do |env|
     if LOGGER.level <= ::Log::Severity::Debug
-      start_ns = (env.get("__memo_req_start_ns") rescue nil)
+      start_instant = (env.get("__memo_req_start_instant") rescue nil)
       rid = (env.get("__memo_req_id") rescue nil)
-      if start_ns.is_a?(Int64)
-        now_ns = Time.monotonic.total_nanoseconds
-        dur_ms = ((now_ns - start_ns) / 1_000_000.0).round(1)
+      if start_instant.is_a?(Time::Instant)
+        span = Time.instant - start_instant
+        dur_ms = span.total_milliseconds.round(1)
         LOGGER.debug { "request end id=#{rid} status=#{env.response.status_code} duration_ms=#{dur_ms}" }
       end
     end
@@ -55,7 +56,7 @@ module Memo
     # Protect all state-changing requests and sensitive reads.
     return true if env.request.method != "GET"
     path = env.request.path
-    path == "/export.json" || path == "/api/info"
+    path == "/export.json" || path == "/api/info" || path == "/api/settings"
   end
 
   private def self.allowed_origins : Array(String)
@@ -145,6 +146,45 @@ module Memo
     {version: Memo::VERSION, db_path: db_path, note_count: note_count, repository_url: Memo::REPOSITORY_URL}.to_json
   end
 
+  # Application settings endpoint
+  get "/api/settings" do |env|
+    env.response.content_type = "application/json; charset=utf-8"
+    {
+      version: Memo::Settings::SETTINGS_VERSION,
+      ui:      {
+        editor_font_size_px:     Memo::Settings.editor_font_size_px,
+        min_editor_font_size_px: Memo::Settings::MIN_EDITOR_FONT_SIZE_PX,
+        max_editor_font_size_px: Memo::Settings::MAX_EDITOR_FONT_SIZE_PX,
+      },
+    }.to_json
+  end
+
+  post "/api/settings" do |env|
+    raw = env.params.body["editor_font_size_px"]?.try(&.to_s)
+    unless raw
+      env.response.status_code = 400
+      env.response.content_type = "application/json; charset=utf-8"
+      next({status: "error", message: "missing editor_font_size_px"}.to_json)
+    end
+
+    value = raw.to_i?
+    unless value
+      env.response.status_code = 400
+      env.response.content_type = "application/json; charset=utf-8"
+      next({status: "error", message: "editor_font_size_px must be an integer"}.to_json)
+    end
+
+    begin
+      Memo::Settings.update_editor_font_size_px(value)
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "success", ui: {editor_font_size_px: Memo::Settings.editor_font_size_px}}.to_json
+    rescue ex
+      env.response.status_code = 400
+      env.response.content_type = "application/json; charset=utf-8"
+      {status: "error", message: ex.message}.to_json
+    end
+  end
+
   # Minimal export endpoint (no auth, local desktop assumption)
   get "/export.json" do |env|
     rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
@@ -169,7 +209,7 @@ module Memo
   end
 
   post "/notes/:id/update" do |env|
-    started = Time.monotonic
+    started = Time.instant
     id = env.params.url["id"].to_i64
     raw_title = env.params.body["title"]?.try(&.to_s) || ""
     raw_body = env.params.body["body"]?.try(&.to_s) || ""
@@ -181,7 +221,7 @@ module Memo
     begin
       affected = Memo::DBX.db.exec "update notes set title=?, body=?, updated_at=? where id=?",
         raw_title, raw_body, now, id
-      duration_ms = ((Time.monotonic - started).total_milliseconds).round(1)
+      duration_ms = (Time.instant - started).total_milliseconds.round(1)
       if affected == 0
         LOGGER.warn { "UPDATE noop id=#{id} (no matching row) elapsed_ms=#{duration_ms}" }
       else
@@ -190,7 +230,7 @@ module Memo
       env.response.content_type = "application/json; charset=utf-8"
       {status: "success", id: id, updated_at: now}.to_json
     rescue ex
-      duration_ms = ((Time.monotonic - started).total_milliseconds).round(1)
+      duration_ms = (Time.instant - started).total_milliseconds.round(1)
       LOGGER.error(exception: ex) { "UPDATE failed id=#{id} elapsed_ms=#{duration_ms} message=#{ex.message}" }
       env.response.status_code = 400
       env.response.content_type = "application/json; charset=utf-8"

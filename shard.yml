@@ -20,6 +20,6 @@ dependencies:
     github: naqvis/webview
     branch: master
 
-crystal: '>= 1.17.1'
+crystal: '>= 1.19.1'
 
 license: MIT

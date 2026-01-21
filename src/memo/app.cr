@@ -92,10 +92,10 @@ module Memo
 
     private def wait_for_server_start
       timeout = 10.seconds
-      start_time = Time.monotonic
+      start_time = Time.instant
 
       until server_listening?
-        if (Time.monotonic - start_time) > timeout
+        if (Time.instant - start_time) > timeout
           raise "Server failed to start within #{timeout}"
         end
         Fiber.yield
