@@ -1,0 +1,52 @@
+app-id: com.github.kojix2.memo
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: memo
+
+finish-args:
+  # Display access
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  
+  # Network access (for web server functionality)
+  - --share=network
+  
+  # Home directory access (for storing memos)
+  - --filesystem=home
+  
+  # Access to themes
+  - --socket=session-bus
+  - --socket=system-bus
+
+modules:
+  # This module assumes you've pre-built the binary
+  # For a full build from source, you'd need to add Crystal compiler
+  - name: memo
+    buildsystem: simple
+    build-commands:
+      # Install pre-built binary
+      - install -Dm755 memo /app/bin/memo
+      
+      # Install desktop file
+      - install -Dm644 com.github.kojix2.memo.desktop /app/share/applications/com.github.kojix2.memo.desktop
+      
+      # Install icon
+      - install -Dm644 app_icon.png /app/share/icons/hicolor/256x256/apps/com.github.kojix2.memo.png
+      
+      # Install metainfo
+      - install -Dm644 com.github.kojix2.memo.metainfo.xml /app/share/metainfo/com.github.kojix2.memo.metainfo.xml
+    
+    sources:
+      - type: file
+        path: bin/memo
+      
+      - type: file
+        path: com.github.kojix2.memo.desktop
+      
+      - type: file
+        path: resources/app_icon.png
+      
+      - type: file
+        path: com.github.kojix2.memo.metainfo.xml

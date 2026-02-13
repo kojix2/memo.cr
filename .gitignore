@@ -8,6 +8,11 @@
 /_wv2
 /dist
 
+# Flatpak build artifacts
+/build-dir
+/repo
+/.flatpak-builder
+
 *.ico
 *.icns
 

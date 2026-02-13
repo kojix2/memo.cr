@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.kojix2.memo</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Memo</name>
+  <summary>Simple memo app</summary>
+  <description>
+    <p>
+      A simple and practical note-taking application built with Crystal and WebView.
+      Lightweight and easy to use for quick notes and memos.
+    </p>
+  </description>
+  
+  <url type="homepage">https://github.com/kojix2/memo.cr</url>
+  <url type="bugtracker">https://github.com/kojix2/memo.cr/issues</url>
+  
+  <developer_name>kojix2</developer_name>
+  
+  <launchable type="desktop-id">com.github.kojix2.memo.desktop</launchable>
+  
+  <provides>
+    <binary>memo</binary>
+  </provides>
+  
+  <releases>
+    <release version="0.0.6" date="2026-02-13"/>
+  </releases>
+  
+  <content_rating type="oars-1.1" />
+  
+  <categories>
+    <category>Utility</category>
+    <category>Office</category>
+  </categories>
+</component>

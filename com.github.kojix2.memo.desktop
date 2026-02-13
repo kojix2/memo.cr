@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Memo
+Comment=Simple memo app
+Exec=memo
+Icon=com.github.kojix2.memo
+Terminal=false
+Categories=Utility;Office;
+StartupNotify=true

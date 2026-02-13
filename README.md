@@ -34,6 +34,12 @@ Fedora/openSUSE (RPM)
 ./build-rpm.sh
 ```
 
+Universal Linux (Flatpak)
+
+```sh
+./build-flatpak.sh
+```
+
 macOS
 
 ```sh
