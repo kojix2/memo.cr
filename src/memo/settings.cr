@@ -109,7 +109,6 @@ module Memo
       dir = File.dirname(file_path)
       Dir.mkdir_p(dir) unless Dir.exists?(dir)
 
-      tmp_path : String? = nil
       bak_path = file_path + ".bak"
 
       tmp_path = file_path + ".tmp"

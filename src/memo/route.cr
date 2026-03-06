@@ -70,7 +70,7 @@ module Memo
     end
 
     if referer = env.request.headers["Referer"]?
-      return origins.any? { |o| referer.starts_with?(o) }
+      return origins.any? { |allowed_origin| referer.starts_with?(allowed_origin) }
     end
 
     false
@@ -121,10 +121,10 @@ module Memo
 
     # Find the selected note or use the first note (most recently updated)
     selected_note = if selected_note_id
-                      notes.find { |note| note[0] == selected_note_id } || notes.first?
-                    else
-                      notes.first?
-                    end
+      notes.find { |note| note[0] == selected_note_id } || notes.first?
+    else
+      notes.first?
+    end
 
     content = ECR.render "views/index.ecr"
     ECR.render "views/layout.ecr"
