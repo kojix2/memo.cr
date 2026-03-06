@@ -5,7 +5,7 @@
     </div>
     <div class="notes-list">
         <% notes.each do |id, title, body, _created_at, updated_at| %>
-            <div class="note-item <%= "active" if selected_note && selected_note[0] == id %>" onclick="selectNote(<%= id %>)">
+            <div class="note-item <%= "active" if selected_note && selected_note[0] == id %>" onclick="selectNote(event, <%= id %>)">
                 <div class="note-title"><%= Memo.h(title.empty? ? "Untitled" : title) %></div>
                 <% chars = body.chars; preview = chars.first(51).join; preview += "..." if chars.size > 51 %>
                 <div class="note-preview"><%= Memo.h(preview) %></div>
@@ -53,10 +53,33 @@
 
 <script>
 const memoToken = (document.querySelector('meta[name="memo-token"]')?.getAttribute('content')) || '';
+const SIDEBAR_SCROLL_KEY = 'memo.sidebar.scrollTop';
 let currentNoteId = <%= notes.empty? || !selected_note ? "null" : selected_note[0] %>;
 let originalTitle = '';
 let originalBody = '';
 let hasUnsavedChanges = false;
+
+function getNotesListEl() {
+    return document.querySelector('.notes-list');
+}
+
+function saveSidebarScrollPosition() {
+    const notesList = getNotesListEl();
+    if (!notesList) return;
+    sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(notesList.scrollTop));
+}
+
+function restoreSidebarScrollPosition() {
+    const saved = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    if (saved === null) return;
+    const notesList = getNotesListEl();
+    if (!notesList) return;
+    const scrollTop = Number.parseInt(saved, 10);
+    if (Number.isNaN(scrollTop)) return;
+    requestAnimationFrame(() => {
+        notesList.scrollTop = scrollTop;
+    });
+}
 
 // Record initial values
 document.addEventListener('DOMContentLoaded', function() {
@@ -67,6 +90,8 @@ document.addEventListener('DOMContentLoaded', function() {
         originalTitle = titleInput.value;
         originalBody = bodyTextarea.value;
     }
+
+    restoreSidebarScrollPosition();
 });
 
 function checkForChanges() {
@@ -84,12 +109,20 @@ function checkForChanges() {
     return hasUnsavedChanges;
 }
 
-function selectNote(noteId) {
+async function selectNote(clickEvent, noteId) {
+    saveSidebarScrollPosition();
+
     // Save current note if it has changes
     if (currentNoteId && checkForChanges()) {
-        // Attempt synchronous save (actually async but we don't await to keep navigation responsive)
-        console.debug('[memo] selectNote auto-saving current note before navigation id=' + currentNoteId);
-        saveNote(currentNoteId, true);
+        try {
+            console.debug('[memo] selectNote auto-saving current note before navigation id=' + currentNoteId);
+            await saveNote(currentNoteId, true, true);
+        } catch (error) {
+            console.error('Failed to save while switching note:', error);
+            if (!confirm('Failed to save current note. Continue without saving?')) {
+                return;
+            }
+        }
     }
 
     // Remove active class from all notes
@@ -97,19 +130,24 @@ function selectNote(noteId) {
         item.classList.remove('active');
     });
 
-    // Add active class to clicked note
-    event.target.closest('.note-item').classList.add('active');
+    // Add active class to clicked note.
+    // Note: event.currentTarget is null after await in inline handlers;
+    // event.target still refers to the element that was clicked.
+    const clickedItem = clickEvent?.target?.closest('.note-item');
+    if (clickedItem) clickedItem.classList.add('active');
 
     // Load note content (for now, we'll just redirect)
     window.location.href = '/?note=' + noteId;
 }
 
 async function createNewNote() {
+    saveSidebarScrollPosition();
+
     // Save current note if it has changes
     if (currentNoteId && checkForChanges()) {
         try {
             console.debug('[memo] createNewNote: attempting to save current note id=' + currentNoteId);
-            await saveNote(currentNoteId, false);
+            await saveNote(currentNoteId, false, true);
             console.debug('[memo] createNewNote: save succeeded for id=' + currentNoteId);
         } catch (error) {
             console.error('Failed to save:', error);
@@ -146,9 +184,12 @@ async function createNewNote() {
 
 // Async save function
 let saving = false;
-async function saveNote(noteId, silent = true) {
+async function saveNote(noteId, silent = true, throwOnError = false) {
     if (!noteId) return;
-    if (saving) return; 
+    if (saving) {
+        if (throwOnError) throw new Error('Save already in progress');
+        return;
+    } 
     if (!silent) console.debug('[memo] saveNote: start id=' + noteId);
     const titleEl = document.getElementById('note-title');
     const bodyEl  = document.getElementById('note-body');
@@ -194,8 +235,7 @@ async function saveNote(noteId, silent = true) {
     } catch(e) {
         if (!silent) console.error(e);
         if (!silent) console.debug('[memo] saveNote: failed id=' + noteId + ' message=' + e.message);
-        // Re-throw when not silent so caller (e.g., createNewNote) can react
-        if (!silent) throw e;
+        if (throwOnError) throw e;
     } finally {
         saving = false;
         if (!silent) console.debug('[memo] saveNote: end id=' + noteId);
@@ -228,6 +268,8 @@ function deleteNote(noteId) {
             button.style.color = '';
         }, 3000);
     } else {
+        saveSidebarScrollPosition();
+
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/notes/' + noteId + '/delete';
@@ -267,7 +309,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Save on window unload
-window.addEventListener('beforeunload', () => saveNoteBeacon(currentNoteId));
+window.addEventListener('beforeunload', () => {
+    saveSidebarScrollPosition();
+    saveNoteBeacon(currentNoteId);
+});
 
 // Save when page visibility changes (tab switching, etc.)
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveNoteBeacon(currentNoteId); });
