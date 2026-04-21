@@ -1,10 +1,21 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Load configuration from .env
+# ------------------------------------------------------------
+# Load configuration
+# ------------------------------------------------------------
+if [ ! -f .env ]; then
+  echo "ERROR: .env not found" >&2
+  exit 1
+fi
+
 set -a
 source .env
 set +a
+
+: "${APP_NAME:?APP_NAME is required in .env}"
+: "${APP_NAME_CAPITALIZED:?APP_NAME_CAPITALIZED is required in .env}"
+: "${VERSION:?VERSION is required in .env}"
 
 EXECUTABLE_PATH="bin/$APP_NAME"
 APP_BUNDLE="$APP_NAME_CAPITALIZED.app"
@@ -12,8 +23,11 @@ MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
 RESOURCES_DIR="$APP_BUNDLE/Contents/Resources"
 FRAMEWORKS_DIR="$APP_BUNDLE/Contents/Frameworks"
 PLIST_PATH="$APP_BUNDLE/Contents/Info.plist"
+
 ICON_NAME="app_icon"
-ICON_PATH="resources/$ICON_NAME.icns"
+ICON_PNG="resources/$ICON_NAME.png"
+ICON_ICNS="resources/$ICON_NAME.icns"
+
 ARCH="aarch64"
 DMG_NAME="${APP_NAME}_${VERSION}_${ARCH}.dmg"
 VOL_NAME="$APP_NAME_CAPITALIZED"
@@ -21,53 +35,229 @@ STAGING_DIR="dmg_stage"
 DIST_DIR="dist"
 APP_BUNDLE_DIST="${APP_NAME_CAPITALIZED}_${VERSION}_${ARCH}.app"
 
-echo "Building $APP_NAME v$VERSION..."
-shards install
-shards build --release $CRFLAGS
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${APP_NAME}.bundle.XXXXXX")"
+SEEN_DIR="$TMP_DIR/seen"
+mkdir -p "$SEEN_DIR"
 
-rm -rf "$APP_BUNDLE" "$DMG_NAME" "$STAGING_DIR" "$DIST_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$FRAMEWORKS_DIR" "$DIST_DIR"
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
 
-# Create .app bundle
-cp "$EXECUTABLE_PATH" "$MACOS_DIR/$APP_NAME"
-chmod +x "$MACOS_DIR/$APP_NAME"
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+log() {
+  printf '%s\n' "$*"
+}
 
-# Generate .icns from .png
-if [ -f "resources/$ICON_NAME.png" ]; then
-  echo "Generating $ICON_NAME.icns from $ICON_NAME.png..."
-  ICONSET_DIR="resources/$ICON_NAME.iconset"
-  mkdir -p "$ICONSET_DIR"
-  
-  # Generate different sizes using sips
-  sips -z 16 16 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_16x16.png"
-  sips -z 32 32 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_16x16@2x.png"
-  sips -z 32 32 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_32x32.png"
-  sips -z 64 64 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_32x32@2x.png"
-  sips -z 128 128 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_128x128.png"
-  sips -z 256 256 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_128x128@2x.png"
-  sips -z 256 256 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_256x256.png"
-  sips -z 512 512 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_256x256@2x.png"
-  sips -z 512 512 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_512x512.png"
-  sips -z 1024 1024 "resources/$ICON_NAME.png" --out "$ICONSET_DIR/icon_512x512@2x.png"
-  
-  # Generate .icns file
-  iconutil -c icns "$ICONSET_DIR" -o "$ICON_PATH"
-  
-  # Clean up iconset directory
-  rm -rf "$ICONSET_DIR"
-  
-  echo "Generated $ICON_PATH"
-fi
+hash_key() {
+  printf '%s' "$1" | shasum -a 256 | awk '{print $1}'
+}
 
-if [ -f "$ICON_PATH" ]; then
-  cp "$ICON_PATH" "$RESOURCES_DIR/$ICON_NAME.icns"
-fi
+is_seen() {
+  local key
+  key="$(hash_key "$1")"
+  [ -e "$SEEN_DIR/$key" ]
+}
 
-# Create Info.plist
-cat > "$PLIST_PATH" <<EOF
+mark_seen() {
+  local key
+  key="$(hash_key "$1")"
+  touch "$SEEN_DIR/$key"
+}
+
+list_deps() {
+  local target="$1"
+  otool -L "$target" | tail -n +2 | awk '{print $1}'
+}
+
+is_system_lib() {
+  case "$1" in
+    /System/Library/*) return 0 ;;
+    /usr/lib/*) return 0 ;;
+    /System/Volumes/Preboot/Cryptexes/OS/usr/lib/*) return 0 ;;
+    /System/iOSSupport/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_bundle_internal_ref() {
+  case "$1" in
+    @executable_path/*|@loader_path/*|@rpath/*) return 0 ;;
+    "$FRAMEWORKS_DIR"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+ensure_writable() {
+  chmod u+w "$1" 2>/dev/null || true
+}
+
+copy_lib_into_frameworks() {
+  local src="$1"
+  local base dest
+
+  base="$(basename "$src")"
+  dest="$FRAMEWORKS_DIR/$base"
+
+  if [ ! -e "$dest" ]; then
+    printf 'Copying: %s -> %s\n' "$src" "$dest" >&2
+    cp -fL "$src" "$dest"
+    ensure_writable "$dest"
+
+    # Normalize the dylib's own install name.
+    install_name_tool -id "@rpath/$base" "$dest"
+  fi
+
+  printf '%s\n' "$dest"
+}
+
+maybe_add_rpath() {
+  local target="$1"
+  local rpath="$2"
+
+  if ! otool -l "$target" | awk '
+    $1 == "cmd" && $2 == "LC_RPATH" { in_rpath = 1; next }
+    in_rpath && $1 == "path" { print $2; in_rpath = 0 }
+  ' | grep -Fx "$rpath" >/dev/null 2>&1; then
+    ensure_writable "$target"
+    install_name_tool -add_rpath "$rpath" "$target"
+  fi
+}
+
+patch_dep_reference() {
+  local target="$1"
+  local old="$2"
+  local new="$3"
+
+  ensure_writable "$target"
+  install_name_tool -change "$old" "$new" "$target"
+}
+
+scan_and_bundle_binary() {
+  local target="$1"
+  local kind="$2"   # executable | dylib
+  local dep dep_dest dep_base new_ref
+
+  if is_seen "$target"; then
+    return
+  fi
+  mark_seen "$target"
+
+  if [ "$kind" = "executable" ]; then
+    maybe_add_rpath "$target" "@executable_path/../Frameworks"
+  else
+    maybe_add_rpath "$target" "@loader_path"
+    install_name_tool -id "@rpath/$(basename "$target")" "$target"
+  fi
+
+  while IFS= read -r dep; do
+    [ -n "$dep" ] || continue
+
+    if is_system_lib "$dep"; then
+      continue
+    fi
+
+    # Already internalized? leave it as-is.
+    if is_bundle_internal_ref "$dep"; then
+      continue
+    fi
+
+    # Only bundle absolute non-system libs.
+    case "$dep" in
+      /*)
+        dep_dest="$(copy_lib_into_frameworks "$dep")"
+        dep_base="$(basename "$dep_dest")"
+
+        if [ "$kind" = "executable" ]; then
+          new_ref="@executable_path/../Frameworks/$dep_base"
+        else
+          new_ref="@loader_path/$dep_base"
+        fi
+
+        log "Patching: $target"
+        log "  $dep"
+        log "  -> $new_ref"
+        patch_dep_reference "$target" "$dep" "$new_ref"
+
+        # Recurse into copied dylib.
+        scan_and_bundle_binary "$dep_dest" "dylib"
+        ;;
+      *)
+        # Leave unknown relative-style refs untouched.
+        ;;
+    esac
+  done < <(list_deps "$target")
+}
+
+validate_bundle() {
+  local failed=0
+  local target dep
+
+  log "Validating bundled dependencies..."
+
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+
+    while IFS= read -r dep; do
+      [ -n "$dep" ] || continue
+
+      if is_system_lib "$dep"; then
+        continue
+      fi
+
+      if is_bundle_internal_ref "$dep"; then
+        continue
+      fi
+
+      echo "ERROR: external dependency remains:" >&2
+      echo "  binary: $target" >&2
+      echo "  dep:    $dep" >&2
+      failed=1
+    done < <(list_deps "$target")
+  done < <(
+    find "$MACOS_DIR" "$FRAMEWORKS_DIR" -type f \
+      \( -perm -111 -o -name "*.dylib" -o -name "*.so" \) \
+      2>/dev/null
+  )
+
+  if [ "$failed" -ne 0 ]; then
+    echo "Bundle validation failed." >&2
+    exit 1
+  fi
+}
+
+generate_icon() {
+  if [ ! -f "$ICON_PNG" ]; then
+    return
+  fi
+
+  log "Generating $ICON_ICNS from $ICON_PNG..."
+  local iconset_dir="resources/$ICON_NAME.iconset"
+  mkdir -p "$iconset_dir"
+
+  sips -z 16   16   "$ICON_PNG" --out "$iconset_dir/icon_16x16.png" >/dev/null
+  sips -z 32   32   "$ICON_PNG" --out "$iconset_dir/icon_16x16@2x.png" >/dev/null
+  sips -z 32   32   "$ICON_PNG" --out "$iconset_dir/icon_32x32.png" >/dev/null
+  sips -z 64   64   "$ICON_PNG" --out "$iconset_dir/icon_32x32@2x.png" >/dev/null
+  sips -z 128  128  "$ICON_PNG" --out "$iconset_dir/icon_128x128.png" >/dev/null
+  sips -z 256  256  "$ICON_PNG" --out "$iconset_dir/icon_128x128@2x.png" >/dev/null
+  sips -z 256  256  "$ICON_PNG" --out "$iconset_dir/icon_256x256.png" >/dev/null
+  sips -z 512  512  "$ICON_PNG" --out "$iconset_dir/icon_256x256@2x.png" >/dev/null
+  sips -z 512  512  "$ICON_PNG" --out "$iconset_dir/icon_512x512.png" >/dev/null
+  sips -z 1024 1024 "$ICON_PNG" --out "$iconset_dir/icon_512x512@2x.png" >/dev/null
+
+  iconutil -c icns "$iconset_dir" -o "$ICON_ICNS"
+  rm -rf "$iconset_dir"
+
+  log "Generated $ICON_ICNS"
+}
+
+write_plist() {
+  cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
- "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key>
@@ -78,47 +268,84 @@ cat > "$PLIST_PATH" <<EOF
   <string>$APP_NAME</string>
   <key>CFBundleVersion</key>
   <string>$VERSION</string>
+  <key>CFBundleShortVersionString</key>
+  <string>$VERSION</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
   <string>$ICON_NAME</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
 </dict>
 </plist>
 EOF
+}
 
-# Bundle Homebrew libraries
-otool -L "$MACOS_DIR/$APP_NAME" \
-| awk '{print $1}' \
-| grep "^/opt/homebrew" \
-| while read -r lib; do
-    base=$(basename "$lib")
-    cp "$lib" "$FRAMEWORKS_DIR/$base"
-  echo "Before install_name_tool:"
-  otool -L "$MACOS_DIR/$APP_NAME"
-    
-    install_name_tool -change "$lib" "@executable_path/../Frameworks/$base" "$MACOS_DIR/$APP_NAME"
-    
-  echo "After install_name_tool:"
-  otool -L "$MACOS_DIR/$APP_NAME"
-done
+ad_hoc_sign() {
+  log "Signing app bundle..."
+  /usr/bin/codesign --force --deep --sign - "$APP_BUNDLE"
+  /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"
+}
 
-# Create DMG
-mkdir -p "$STAGING_DIR"
-cp -R "$APP_BUNDLE" "$STAGING_DIR/"
-ln -s /Applications "$STAGING_DIR/Applications"
+create_dmg() {
+  mkdir -p "$STAGING_DIR"
+  cp -R "$APP_BUNDLE" "$STAGING_DIR/"
+  ln -s /Applications "$STAGING_DIR/Applications"
 
-hdiutil create "$DMG_NAME" \
-  -volname "$VOL_NAME" \
-  -srcfolder "$STAGING_DIR" \
-  -fs HFS+ \
-  -format UDZO \
-  -imagekey zlib-level=9 \
-  -quiet
+  hdiutil create "$DMG_NAME" \
+    -volname "$VOL_NAME" \
+    -srcfolder "$STAGING_DIR" \
+    -fs HFS+ \
+    -format UDZO \
+    -imagekey zlib-level=9 \
+    -quiet
 
-rm -rf "$STAGING_DIR"
+  rm -rf "$STAGING_DIR"
 
-mv "$DMG_NAME" "$DIST_DIR/"
-mv "$APP_BUNDLE" "$DIST_DIR/$APP_BUNDLE_DIST"
+  mv "$DMG_NAME" "$DIST_DIR/"
+  mv "$APP_BUNDLE" "$DIST_DIR/$APP_BUNDLE_DIST"
+}
 
-echo "Created: dist/$DMG_NAME"
-echo "Created: dist/$APP_BUNDLE_DIST"
+# ------------------------------------------------------------
+# Build
+# ------------------------------------------------------------
+log "Building $APP_NAME v$VERSION..."
+shards install
+
+if [ -n "${CRFLAGS:-}" ]; then
+  # shellcheck disable=SC2086
+  shards build --release $CRFLAGS
+else
+  shards build --release
+fi
+
+# ------------------------------------------------------------
+# Bundle layout
+# ------------------------------------------------------------
+rm -rf "$APP_BUNDLE" "$DMG_NAME" "$STAGING_DIR" "$DIST_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$FRAMEWORKS_DIR" "$DIST_DIR"
+
+cp "$EXECUTABLE_PATH" "$MACOS_DIR/$APP_NAME"
+chmod +x "$MACOS_DIR/$APP_NAME"
+
+generate_icon
+if [ -f "$ICON_ICNS" ]; then
+  cp "$ICON_ICNS" "$RESOURCES_DIR/$ICON_NAME.icns"
+fi
+
+write_plist
+
+# ------------------------------------------------------------
+# Recursive dependency bundling
+# ------------------------------------------------------------
+scan_and_bundle_binary "$MACOS_DIR/$APP_NAME" "executable"
+validate_bundle
+ad_hoc_sign
+
+# ------------------------------------------------------------
+# Package
+# ------------------------------------------------------------
+create_dmg
+
+log "Created: dist/$DMG_NAME"
+log "Created: dist/$APP_BUNDLE_DIST"
