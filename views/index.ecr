@@ -157,7 +157,12 @@ async function createNewNote() {
         }
     }
 
-    const title = 'Untitled';
+    const today = new Date();
+    const title = [
+        today.getFullYear(),
+        String(today.getMonth() + 1).padStart(2, '0'),
+        String(today.getDate()).padStart(2, '0')
+    ].join('-');
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/notes';
