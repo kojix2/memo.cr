@@ -119,14 +119,14 @@ module Memo
     # Get selected note ID from query parameter
     selected_note_id = env.params.query["note"]?.try(&.to_i64?)
 
-    # Find the selected note or use the first note (most recently updated)
-    selected_note = if selected_note_id
-      notes.find { |note| note[0] == selected_note_id } || notes.first?
-    else
-      notes.first?
-    end
+    # ECR templates read these locals when rendering the nested layout.
+    selected_note = if selected_note_id # ameba:disable Lint/UselessAssign
+                      notes.find { |note| note[0] == selected_note_id } || notes.first?
+                    else
+                      notes.first?
+                    end
 
-    content = ECR.render "views/index.ecr"
+    content = ECR.render "views/index.ecr" # ameba:disable Lint/UselessAssign
     ECR.render "views/layout.ecr"
   end
 
@@ -195,7 +195,8 @@ module Memo
   end
 
   get "/settings" do |_|
-    content = ECR.render "views/settings.ecr"
+    # ECR templates read this local when rendering the nested layout.
+    content = ECR.render "views/settings.ecr" # ameba:disable Lint/UselessAssign
     ECR.render "views/layout.ecr"
   end
 
