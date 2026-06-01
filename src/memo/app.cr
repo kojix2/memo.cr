@@ -61,7 +61,7 @@ module Memo
       wait_for_server_start
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
-      wv.navigate("http://127.0.0.1:#{@port}")
+      wv.navigate("http://127.0.0.1:#{@port}/?memo_token=#{Memo::Security.token}")
       wv.run
       wv.destroy
 

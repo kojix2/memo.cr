@@ -54,7 +54,7 @@ module Memo
     # Protect all state-changing requests and sensitive reads.
     return true if env.request.method != "GET"
     path = env.request.path
-    path == "/export.json" || path == "/api/info" || path == "/api/settings"
+    path == "/" || path == "/settings" || path == "/export.json" || path == "/api/info" || path == "/api/settings"
   end
 
   private def self.allowed_origins : Array(String)
@@ -76,25 +76,18 @@ module Memo
     false
   end
 
+  private def self.origin_allowed?(env) : Bool
+    return true if same_origin?(env)
+
+    # Initial WebView top-level GET navigation has no Origin/Referer. It is
+    # still protected by the unguessable per-launch token in the URL.
+    env.request.method == "GET" &&
+      !env.request.headers.has_key?("Origin") &&
+      !env.request.headers.has_key?("Referer")
+  end
+
   before_all do |env|
     if token_protected?(env)
-      # P1: Mitigate CSRF-like localhost abuse by requiring same-origin requests.
-      # Enforce Origin when present; otherwise fall back to Referer.
-      # If neither header exists, reject the request.
-      unless same_origin?(env)
-        env.response.content_type = "application/json; charset=utf-8"
-        err_json = {status: "error", message: "forbidden"}.to_json
-        halt env, status_code: 403, response: err_json
-      end
-
-      if sfs = env.request.headers["Sec-Fetch-Site"]?
-        unless sfs == "same-origin" || sfs == "none"
-          env.response.content_type = "application/json; charset=utf-8"
-          err_json = {status: "error", message: "forbidden"}.to_json
-          halt env, status_code: 403, response: err_json
-        end
-      end
-
       unless Memo::Security.enabled?
         env.response.content_type = "application/json; charset=utf-8"
         err_json = {status: "error", message: "security token not initialized"}.to_json
@@ -106,6 +99,23 @@ module Memo
         env.response.content_type = "application/json; charset=utf-8"
         err_json = {status: "error", message: "forbidden"}.to_json
         halt env, status_code: 403, response: err_json
+      end
+
+      # P1: Mitigate CSRF-like localhost abuse by requiring same-origin signals
+      # when browsers provide them. The initial WebView GET is allowed only
+      # without Origin/Referer and with a valid token.
+      unless origin_allowed?(env)
+        env.response.content_type = "application/json; charset=utf-8"
+        err_json = {status: "error", message: "forbidden"}.to_json
+        halt env, status_code: 403, response: err_json
+      end
+
+      if sfs = env.request.headers["Sec-Fetch-Site"]?
+        unless sfs == "same-origin" || sfs == "none"
+          env.response.content_type = "application/json; charset=utf-8"
+          err_json = {status: "error", message: "forbidden"}.to_json
+          halt env, status_code: 403, response: err_json
+        end
       end
     end
   end
@@ -204,7 +214,7 @@ module Memo
     now = Memo::DBX.now_s
     Memo::DBX.db.exec "insert into notes(title, body, created_at, updated_at) values(?,?,?,?)",
       env.params.body["title"].to_s, env.params.body["body"].to_s, now, now
-    env.redirect "/"
+    env.redirect "/?memo_token=#{Memo::Security.token}"
   end
 
   post "/notes/:id/update" do |env|
@@ -239,6 +249,6 @@ module Memo
 
   post "/notes/:id/delete" do |env|
     Memo::DBX.db.exec "delete from notes where id=?", env.params.url["id"].to_i64
-    env.redirect "/"
+    env.redirect "/?memo_token=#{Memo::Security.token}"
   end
 end

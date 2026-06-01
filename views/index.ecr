@@ -20,7 +20,7 @@
         <% end %>
     </div>
     <div class="sidebar-footer">
-        <a href="/settings" class="settings-link">Settings</a>
+        <a href="/settings?memo_token=<%= Memo.h(Memo::Security.token) %>" class="settings-link">Settings</a>
     </div>
 </div>
 
@@ -137,7 +137,7 @@ async function selectNote(clickEvent, noteId) {
     if (clickedItem) clickedItem.classList.add('active');
 
     // Load note content (for now, we'll just redirect)
-    window.location.href = '/?note=' + noteId;
+    window.location.href = '/?note=' + encodeURIComponent(noteId) + '&memo_token=' + encodeURIComponent(memoToken);
 }
 
 async function createNewNote() {

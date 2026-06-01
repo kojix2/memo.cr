@@ -26,7 +26,7 @@
     </div>
   </section>
 
-  <nav><a href="/">← Back to notes</a></nav>
+  <nav><a href="/?memo_token=<%= Memo.h(Memo::Security.token) %>">← Back to notes</a></nav>
 </div>
 </div>
 
@@ -56,13 +56,36 @@ const $ = id => document.getElementById(id);
 $('export-json').href = '/export.json?memo_token=' + encodeURIComponent(T);
 
 fetch('/api/info', {headers:{'X-Memo-Token':T}}).then(r=>r.json()).then(d=>{
-  $('info-section').innerHTML = `<div style="display:grid;gap:6px">
-    <div><span style="opacity:.7">Version:</span> ${d.version}</div>
-    <div><span style="opacity:.7">DB:</span> <code style="background:#f0e7b8;padding:2px 4px;border-radius:3px">${d.db_path}</code></div>
-    <div><span style="opacity:.7">Notes:</span> ${d.note_count}</div>
-    <div><span style="opacity:.7">Source:</span> ${d.repository_url}</div>
-  </div>`;
-}).catch(e=>{ $('info-section').innerHTML = `<p style="color:#d9534f">${e.message}</p>`; });
+  const wrap = document.createElement('div');
+  wrap.style.display = 'grid';
+  wrap.style.gap = '6px';
+  const addRow = (label, value, asCode = false) => {
+    const row = document.createElement('div');
+    const span = document.createElement('span');
+    span.style.opacity = '.7';
+    span.textContent = label + ': ';
+    row.appendChild(span);
+    const valueEl = document.createElement(asCode ? 'code' : 'span');
+    if (asCode) {
+      valueEl.style.background = '#f0e7b8';
+      valueEl.style.padding = '2px 4px';
+      valueEl.style.borderRadius = '3px';
+    }
+    valueEl.textContent = value ?? '';
+    row.appendChild(valueEl);
+    wrap.appendChild(row);
+  };
+  addRow('Version', d.version);
+  addRow('DB', d.db_path, true);
+  addRow('Notes', d.note_count);
+  addRow('Source', d.repository_url);
+  $('info-section').replaceChildren(wrap);
+}).catch(e=>{
+  const p = document.createElement('p');
+  p.style.color = '#d9534f';
+  p.textContent = e.message;
+  $('info-section').replaceChildren(p);
+});
 
 const fontIn = $('editor-font-size'), fontSt = $('editor-font-status'), fontHint = $('editor-font-hint');
 const setSize = px => { if(Number.isFinite(px)) document.documentElement.style.setProperty('--editor-font-size',px+'px'); };
