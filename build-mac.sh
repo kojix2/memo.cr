@@ -312,12 +312,13 @@ create_dmg() {
 log "Building $APP_NAME v$VERSION..."
 shards install
 
+build_args=(--release --link-flags "-Wl,-headerpad_max_install_names")
 if [ -n "${CRFLAGS:-}" ]; then
-  # shellcheck disable=SC2086
-  shards build --release $CRFLAGS
-else
-  shards build --release
+  # shellcheck disable=SC2206
+  build_args+=($CRFLAGS)
 fi
+
+shards build "${build_args[@]}"
 
 # ------------------------------------------------------------
 # Bundle layout
