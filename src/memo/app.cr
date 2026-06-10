@@ -4,6 +4,10 @@ require "webview"
 require "random/secure"
 require "./security"
 
+{% unless flag?(:execution_context) %}
+  {% raise "Memo requires -Dexecution_context. Build with: shards build --release -Dpreview_mt -Dexecution_context" %}
+{% end %}
+
 # Configure logging from LOG_LEVEL (default info); relies on Crystal's std Log.setup_from_env
 Log.setup_from_env
 
@@ -82,26 +86,15 @@ module Memo
     end
 
     private def start_server
-      {% if flag?(:execution_context) %}
-        kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
-        @server_fiber = kemal_context.spawn do
-          begin
-            Memo::DBX.setup
-            Kemal.run(port: @port, args: nil, trap_signal: false)
-          rescue ex
-            puts "Server error: #{ex.message}" if @debug
-          end
+      kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
+      @server_fiber = kemal_context.spawn do
+        begin
+          Memo::DBX.setup
+          Kemal.run(port: @port, args: nil, trap_signal: false)
+        rescue ex
+          puts "Server error: #{ex.message}" if @debug
         end
-      {% else %}
-        @server_fiber = spawn do
-          begin
-            Memo::DBX.setup
-            Kemal.run(port: @port, args: nil, trap_signal: false)
-          rescue ex
-            puts "Server error: #{ex.message}" if @debug
-          end
-        end
-      {% end %}
+      end
     end
 
     private def startup_html(app_url : String, health_url : String) : String
