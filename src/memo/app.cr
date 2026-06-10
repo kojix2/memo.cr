@@ -31,25 +31,6 @@ module Memo
     end
 
     def run
-      {% if flag?(:execution_context) %}
-        kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
-        @server_fiber = kemal_context.spawn do
-          begin
-            Kemal.run(port: @port, args: nil, trap_signal: false)
-          rescue ex
-            puts "Server error: #{ex.message}" if @debug
-          end
-        end
-      {% else %}
-        @server_fiber = spawn do
-          begin
-            Kemal.run(port: @port, args: nil, trap_signal: false)
-          rescue ex
-            puts "Server error: #{ex.message}" if @debug
-          end
-        end
-      {% end %}
-
       at_exit do
         cleanup
       end
@@ -68,16 +49,9 @@ module Memo
         health_url: "http://127.0.0.1:#{@port}/healthz"
       )
 
-      # The loading page polls /healthz, so the UI can come up immediately
-      # while the embedded Kemal server finishes booting in the background.
-      spawn(name: "startup-watchdog") do
-        begin
-          wait_for_server_start
-        rescue ex
-          puts "Server failed to start: #{ex.message}" if @debug
-          wv.terminate
-        end
-      end
+      # Start the embedded server after WebView initialization to reduce the
+      # chance that startup side effects move this fiber off the main thread.
+      start_server
 
       wv.run
       wv.destroy
@@ -107,23 +81,27 @@ module Memo
       end
     end
 
-    private def wait_for_server_start
-      timeout = 10.seconds
-      start_time = Time.instant
-
-      until server_listening?
-        if (Time.instant - start_time) > timeout
-          raise "Server failed to start within #{timeout}"
+    private def start_server
+      {% if flag?(:execution_context) %}
+        kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
+        @server_fiber = kemal_context.spawn do
+          begin
+            Memo::DBX.setup
+            Kemal.run(port: @port, args: nil, trap_signal: false)
+          rescue ex
+            puts "Server error: #{ex.message}" if @debug
+          end
         end
-        Fiber.yield
-      end
-    end
-
-    private def server_listening?
-      TCPSocket.new("127.0.0.1", @port).close
-      true
-    rescue Socket::ConnectError
-      false
+      {% else %}
+        @server_fiber = spawn do
+          begin
+            Memo::DBX.setup
+            Kemal.run(port: @port, args: nil, trap_signal: false)
+          rescue ex
+            puts "Server error: #{ex.message}" if @debug
+          end
+        end
+      {% end %}
     end
 
     private def startup_html(app_url : String, health_url : String) : String

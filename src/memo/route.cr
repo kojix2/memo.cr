@@ -7,8 +7,6 @@ require "./security"
 require "./settings"
 
 module Memo
-  Memo::DBX.setup
-
   # Use the project-wide logger defined in Memo::Log (app.cr)
   LOGGER = Memo::Log
 
