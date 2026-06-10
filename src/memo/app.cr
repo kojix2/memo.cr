@@ -1,4 +1,5 @@
 require "log"
+require "ecr"
 require "webview"
 require "random/secure"
 require "./security"
@@ -58,10 +59,26 @@ module Memo
         exit(0)
       end
 
-      wait_for_server_start
-
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
-      wv.navigate("http://127.0.0.1:#{@port}/?memo_token=#{Memo::Security.token}")
+
+      # Under execution_context, yielding here can resume this fiber on a worker
+      # thread. AppKit/WebView must be initialized before that happens.
+      wv.html = startup_html(
+        app_url: "http://127.0.0.1:#{@port}/?memo_token=#{Memo::Security.token}",
+        health_url: "http://127.0.0.1:#{@port}/healthz"
+      )
+
+      # The loading page polls /healthz, so the UI can come up immediately
+      # while the embedded Kemal server finishes booting in the background.
+      spawn(name: "startup-watchdog") do
+        begin
+          wait_for_server_start
+        rescue ex
+          puts "Server failed to start: #{ex.message}" if @debug
+          wv.terminate
+        end
+      end
+
       wv.run
       wv.destroy
 
@@ -107,6 +124,10 @@ module Memo
       true
     rescue Socket::ConnectError
       false
+    end
+
+    private def startup_html(app_url : String, health_url : String) : String
+      ECR.render("views/startup.ecr")
     end
   end
 end
