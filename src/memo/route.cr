@@ -48,6 +48,10 @@ module Memo
     env.request.headers["X-Memo-Token"]?
   end
 
+  private def self.error_json(message : String) : String
+    {status: "error", message: message}.to_json
+  end
+
   private def self.token_protected?(env) : Bool
     # Protect all state-changing requests and sensitive reads.
     return true if env.request.method != "GET"
@@ -77,42 +81,49 @@ module Memo
   private def self.origin_allowed?(env) : Bool
     return true if same_origin?(env)
 
-    # Initial WebView top-level GET navigation has no Origin/Referer. It is
-    # still protected by the unguessable per-launch token in the URL.
-    env.request.method == "GET" &&
-      !env.request.headers.has_key?("Origin") &&
-      !env.request.headers.has_key?("Referer")
+    token_bearing_webview_navigation?(env)
+  end
+
+  private def self.token_bearing_webview_navigation?(env) : Bool
+    # The startup document is injected with webview_set_html/loadHTMLString
+    # instead of being served from the local HTTP origin. The first navigation
+    # to the app can therefore carry an opaque origin even with a valid token.
+    return false unless env.request.method == "GET"
+
+    origin = env.request.headers["Origin"]?
+    referer = env.request.headers["Referer"]?
+
+    origin_ok = origin.nil? || origin == "null"
+    referer_ok = referer.nil? || referer == "about:blank" || referer.starts_with?("data:") || referer.starts_with?("file:")
+
+    origin_ok && referer_ok
   end
 
   before_all do |env|
     if token_protected?(env)
       unless Memo::Security.enabled?
         env.response.content_type = "application/json; charset=utf-8"
-        err_json = {status: "error", message: "security token not initialized"}.to_json
-        halt env, status_code: 500, response: err_json
+        halt env, status_code: 500, response: error_json("security token not initialized")
       end
 
       provided = extract_token(env)
       if provided != Memo::Security.token
         env.response.content_type = "application/json; charset=utf-8"
-        err_json = {status: "error", message: "forbidden"}.to_json
-        halt env, status_code: 403, response: err_json
+        halt env, status_code: 403, response: error_json("forbidden")
       end
 
       # P1: Mitigate CSRF-like localhost abuse by requiring same-origin signals
-      # when browsers provide them. The initial WebView GET is allowed only
-      # without Origin/Referer and with a valid token.
+      # when browsers provide them. WebView startup navigation is allowed only
+      # for token-bearing GET requests with an opaque/local document origin.
       unless origin_allowed?(env)
         env.response.content_type = "application/json; charset=utf-8"
-        err_json = {status: "error", message: "forbidden"}.to_json
-        halt env, status_code: 403, response: err_json
+        halt env, status_code: 403, response: error_json("forbidden")
       end
 
       if sfs = env.request.headers["Sec-Fetch-Site"]?
-        unless sfs == "same-origin" || sfs == "none"
+        unless sfs == "same-origin" || sfs == "none" || token_bearing_webview_navigation?(env)
           env.response.content_type = "application/json; charset=utf-8"
-          err_json = {status: "error", message: "forbidden"}.to_json
-          halt env, status_code: 403, response: err_json
+          halt env, status_code: 403, response: error_json("forbidden")
         end
       end
     end

@@ -1,2 +1,2 @@
 require "spec"
-require "../src/memo"
+require "../src/memo/version"
