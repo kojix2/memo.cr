@@ -141,6 +141,8 @@ module Memo
   # Healthcheck endpoint
   get "/healthz" do |env|
     env.response.content_type = "text/plain; charset=utf-8"
+    env.response.headers["Access-Control-Allow-Origin"] = "*"
+    env.response.headers["Cache-Control"] = "no-store"
     "ok"
   end
 
