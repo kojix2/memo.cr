@@ -1,17 +1,24 @@
 # Security Notes
 
-**Author:** ChatGPT 5.2 + GitHub Copilot  
+**Author:** ChatGPT 5.2 + GitHub Copilot
 **Created:** 2026-01-14
+**Updated:** 2026-06-16
 
-## Implemented Mitigations (P0)
+## Implemented Mitigations (P0 / P1)
 
-As of 2026-01-14, the following P0 mitigations are implemented:
+As of 2026-06-16, the following mitigations are implemented:
 
+**P0 — Loopback binding and per-launch token**
 - The embedded Kemal server is explicitly bound to loopback (`127.0.0.1`) to prevent accidental LAN exposure.
-- A per-launch random token is generated at startup and required for:
+- A per-launch cryptographically random token (`Random::Secure.hex(32)`) is generated at startup and required for:
   - All state-changing requests (non-GET)
-  - Sensitive read endpoints (`/api/info`, `/api/settings`, `/export.json`)
-- The UI attaches this token to requests via `X-Memo-Token` (fetch) or `memo_token` (forms/query).
+  - Sensitive read endpoints (`/api/info`, `/api/settings`, `/export.json`, `/`, `/settings`)
+- The UI attaches this token via `X-Memo-Token` header (fetch), `memo_token` query/body parameter (forms), or an `HttpOnly; SameSite=Strict` cookie (`memo_token`) set automatically on each protected response.
+
+**P1 — CSRF / Origin hardening**
+- `Origin` and `Referer` headers are validated on all token-protected requests. Only requests from the app's own loopback origins (`http://127.0.0.1:<port>` and `http://localhost:<port>`) are accepted.
+- `Sec-Fetch-Site` header is additionally checked when provided by the browser; values other than `same-origin` or `none` are rejected.
+- WebView startup navigations (opaque/null origin with a valid token) are allowed as a deliberate exception to handle the initial `webview.html=` injection flow.
 
 This project is a desktop application built with **Crystal + WebView**, but it also embeds a **local Kemal HTTP server** and loads the UI over `http://127.0.0.1:<port>`.
 
@@ -68,15 +75,11 @@ Endpoints such as exporting notes (e.g., JSON export) are convenient but can bec
 
 Additionally, exposing the database path reveals local filesystem structure and can aid targeted attacks.
 
-### 5) HTML Injection / XSS Footguns in the UI (Low–Medium)
+### 5) HTML Injection / XSS Footguns in the UI (Low)
 
-The notes list and note content are escaped when rendered, which reduces classic stored XSS risk.
+The notes list and note content are escaped when rendered server-side, which reduces classic stored XSS risk.
 
-However, UI code that inserts strings into `innerHTML` can become a future XSS risk if any of the inserted values become attacker-controlled (directly or indirectly). Even “local-only” values can become attacker-controlled through:
-
-- Environment variables affecting paths.
-- Unexpected error messages.
-- Future feature additions.
+Client-side DOM updates use `textContent` exclusively — no `innerHTML` is currently used in the UI. This significantly reduces the XSS attack surface. Future contributions should continue to avoid `innerHTML` for any user-controlled or server-provided strings.
 
 ### 6) Local Data-at-Rest Protection (Medium)
 
@@ -114,26 +117,27 @@ Even without a direct JS-to-native bridge, the local HTTP server becomes the pri
 
 ## Recommended Mitigations (Practical / High-Value)
 
-### A) Force Loopback Binding (Strongly Recommended)
+### A) Force Loopback Binding (Implemented)
 
-- Bind Kemal explicitly to `127.0.0.1` (and/or `::1`) to prevent LAN exposure.
+As of 2026-06-16 this is implemented:
+
+- Kemal is explicitly bound to `127.0.0.1` to prevent LAN exposure.
 - Consider adding a startup self-check that confirms the listening address is loopback-only.
 
-### B) Add a Per-Launch Secret Token (Recommended)
+### B) Per-Launch Secret Token (Implemented)
 
-Even for loopback-only services, a random secret reduces cross-origin / cross-process abuse.
+As of 2026-06-16 this is implemented. Even for loopback-only services, a random secret reduces cross-origin / cross-process abuse.
 
-Ideas:
+- A cryptographically random token is generated at startup.
+- It is required on all state-changing endpoints and sensitive reads.
+- It is injected into the UI and sent back through request headers, form/query parameters, or the protected cookie.
 
-- Generate a cryptographically random token at startup.
-- Require it on all state-changing endpoints and sensitive reads (export/info).
-- Inject it into the UI (e.g., as a meta tag) and send it as a header.
+### C) CSRF/Origin Hardening (Implemented)
 
-### C) Add CSRF/Origin Hardening (Recommended)
-
-- Validate `Origin` / `Referer` headers where feasible.
-- Require a custom header (e.g., `X-Requested-With`) plus the per-launch token.
-- Reject requests without expected headers.
+As of 2026-06-16 this is fully implemented:
+- `Origin` and `Referer` headers are validated; only the app's own loopback origins are accepted.
+- `Sec-Fetch-Site` is checked when present.
+- The per-launch token is required on all protected endpoints.
 
 ### D) Reduce Data Exposure
 
