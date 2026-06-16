@@ -1,6 +1,7 @@
 # src/routes.cr
 require "kemal"
 require "html"
+require "http/cookie"
 require "ecr"
 require "./db"
 require "./security"
@@ -8,7 +9,8 @@ require "./settings"
 
 module Memo
   # Use the project-wide logger defined in Memo::Log (app.cr)
-  LOGGER = Memo::Log
+  LOGGER           = Memo::Log
+  AUTH_COOKIE_NAME = "memo_token"
 
   # Per-request lightweight timing (only active when debug logging is enabled)
   before_all do |env|
@@ -43,9 +45,21 @@ module Memo
   private def self.extract_token(env) : String?
     env.request.headers["X-Memo-Token"]? ||
       env.params.query["memo_token"]? ||
-      env.params.body["memo_token"]?.try(&.to_s)
+      env.params.body["memo_token"]?.try(&.to_s) ||
+      env.request.cookies[AUTH_COOKIE_NAME]?.try(&.value)
   rescue
-    env.request.headers["X-Memo-Token"]?
+    env.request.headers["X-Memo-Token"]? ||
+      env.request.cookies[AUTH_COOKIE_NAME]?.try(&.value)
+  end
+
+  private def self.set_auth_cookie(env) : Nil
+    env.response.cookies << HTTP::Cookie.new(
+      AUTH_COOKIE_NAME,
+      Memo::Security.token,
+      path: "/",
+      http_only: true,
+      samesite: HTTP::Cookie::SameSite::Strict
+    )
   end
 
   private def self.error_json(message : String) : String
@@ -126,6 +140,8 @@ module Memo
           halt env, status_code: 403, response: error_json("forbidden")
         end
       end
+
+      set_auth_cookie(env)
     end
   end
 
@@ -204,7 +220,7 @@ module Memo
     end
   end
 
-  # Minimal export endpoint (no auth, local desktop assumption)
+  # Export endpoint. Token middleware protects this route.
   get "/export.json" do |env|
     rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
       select id, title, body, created_at, updated_at from notes order by updated_at desc
@@ -225,7 +241,7 @@ module Memo
     now = Memo::DBX.now_s
     Memo::DBX.db.exec "insert into notes(title, body, created_at, updated_at) values(?,?,?,?)",
       env.params.body["title"].to_s, env.params.body["body"].to_s, now, now
-    env.redirect "/?memo_token=#{Memo::Security.token}"
+    env.redirect "/"
   end
 
   post "/notes/:id/update" do |env|
@@ -260,6 +276,6 @@ module Memo
 
   post "/notes/:id/delete" do |env|
     Memo::DBX.db.exec "delete from notes where id=?", env.params.url["id"].to_i64
-    env.redirect "/?memo_token=#{Memo::Security.token}"
+    env.redirect "/"
   end
 end

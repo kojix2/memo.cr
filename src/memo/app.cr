@@ -1,5 +1,6 @@
 require "log"
 require "ecr"
+require "http/client"
 require "webview"
 require "random/secure"
 require "./security"
@@ -22,6 +23,9 @@ module Memo
     SERVER_TOKEN_ENV        = "MEMO_SERVER_TOKEN"
     SERVER_DEBUG_ENV        = "MEMO_SERVER_DEBUG"
     SERVER_SHUTDOWN_TIMEOUT = 2.seconds
+    SERVER_START_ATTEMPTS   =  4
+    SERVER_START_CHECKS     = 20
+    SERVER_START_INTERVAL   = 50.milliseconds
 
     @server_process : Process?
     @server_finished : Channel(Nil)?
@@ -30,7 +34,7 @@ module Memo
     @port : Int32
 
     def initialize(@debug = false)
-      @port = find_available_port
+      @port = 0
 
       # P0: Generate a per-launch secret token and force loopback binding.
       Memo::Security.token = Random::Secure.hex(32)
@@ -113,7 +117,31 @@ module Memo
 
     private def start_server(wv : Webview::Webview) : Nil
       executable = Process.executable_path || raise "cannot determine executable path"
+      last_status = nil
+
+      SERVER_START_ATTEMPTS.times do
+        @port = find_available_port
+        process, finished, exited = launch_server_process(executable, wv)
+
+        if status = wait_for_server_start(exited)
+          last_status = status
+          next
+        end
+
+        @cleanup_mutex.synchronize do
+          @server_process = process
+          @server_finished = finished
+        end
+        return
+      end
+
+      detail = last_status.try { |status| ": #{status.description}" } || ""
+      raise "local server failed to start#{detail}"
+    end
+
+    private def launch_server_process(executable : String, wv : Webview::Webview)
       finished = Channel(Nil).new(1)
+      exited = Channel(Process::Status).new(1)
 
       env = {
         SERVER_PORT_ENV  => @port.to_s,
@@ -130,15 +158,15 @@ module Memo
         error: Process::Redirect::Inherit
       )
 
-      @cleanup_mutex.synchronize do
-        @server_process = process
-        @server_finished = finished
-      end
-
+      # wv.run owns the main thread inside the native WebView/AppKit loop. This
+      # monitor intentionally uses a system thread so process.wait can complete
+      # while the GUI thread is blocked; UI changes still go through wv.dispatch.
       Thread.new(name: "memo-server-monitor") do
         status = process.wait
+        exited.send(status)
         should_report = @cleanup_mutex.synchronize do
-          !@cleaned_up
+          current = @server_process
+          current && current.same?(process) && !@cleaned_up
         end
 
         finished.send(nil)
@@ -149,6 +177,33 @@ module Memo
           end
         end
       end
+
+      {process, finished, exited}
+    end
+
+    private def wait_for_server_start(exited : Channel(Process::Status)) : Process::Status?
+      # A nil result means "continue startup": either the server answered
+      # /healthz, or it stayed alive past the short readiness window. The
+      # startup page keeps polling /healthz, so slow but healthy boots still
+      # show the user a loading screen instead of failing early.
+      SERVER_START_CHECKS.times do
+        return nil if server_healthy?
+
+        select
+        when status = exited.receive
+          return status
+        when timeout(SERVER_START_INTERVAL)
+        end
+      end
+
+      nil
+    end
+
+    private def server_healthy? : Bool
+      response = HTTP::Client.get("http://127.0.0.1:#{@port}/healthz")
+      response.status_code == 200
+    rescue
+      false
     end
 
     private def terminate_server_process(process : Process?, finished : Channel(Nil)?) : Nil

@@ -60,7 +60,7 @@ module Memo
     end
 
     def self.now_s
-      Time.local.to_s(SQLite3::DATE_FORMAT_SUBSECOND)
+      Time.utc.to_s(SQLite3::DATE_FORMAT_SUBSECOND)
     end
 
     # Gracefully close and reset the cached DB connection.
