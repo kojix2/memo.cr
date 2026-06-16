@@ -11,6 +11,12 @@ Get-Content .env | ForEach-Object {
     }
 }
 
+$VERSION = (& shards version .).Trim()
+if (-not $VERSION) {
+    Write-Error "Error: failed to read version with 'shards version .'"
+    exit 1
+}
+
 # Override with environment variable if set
 if ($env:INNO_SETUP_PATH) {
     $INNO_SETUP_PATH = $env:INNO_SETUP_PATH

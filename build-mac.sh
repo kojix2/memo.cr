@@ -12,10 +12,11 @@ fi
 set -a
 source .env
 set +a
+VERSION="$(shards version .)"
 
 : "${APP_NAME:?APP_NAME is required in .env}"
 : "${APP_NAME_CAPITALIZED:?APP_NAME_CAPITALIZED is required in .env}"
-: "${VERSION:?VERSION is required in .env}"
+: "${VERSION:?version is required in shard.yml}"
 
 EXECUTABLE_PATH="bin/$APP_NAME"
 APP_BUNDLE="$APP_NAME_CAPITALIZED.app"

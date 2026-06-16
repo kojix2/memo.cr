@@ -5,6 +5,7 @@ set -e
 set -a
 source .env
 set +a
+VERSION="$(shards version .)"
 
 DIST_DIR="dist"
 MANIFEST="com.github.kojix2.memo.yml"
