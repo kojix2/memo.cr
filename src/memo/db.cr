@@ -38,7 +38,7 @@ module Memo
       # Ensure we have exactly three slashes after the scheme by removing leading slashes from the path
       # and then prefixing with sqlite3///
       path = path.sub(/^\/+/, "")
-      # Add busy_timeout to reduce SQLITE_BUSY errors under multi-thread (-Dpreview_mt)
+      # Add busy_timeout to reduce SQLITE_BUSY errors if multiple connections overlap.
       "sqlite3:///#{path}?journal_mode=wal&synchronous=normal&encoding=utf8&busy_timeout=5000"
     end
 

@@ -17,7 +17,7 @@ Practice with [WebView](https://github.com/naqvis/webview)
 ## Installation
 
 ```sh
-shards build --release -Dpreview_mt -Dexecution_context
+shards build --release
 ```
 
 Generate app package for your platform:

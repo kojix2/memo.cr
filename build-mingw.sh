@@ -24,5 +24,5 @@ shards install --without-development
 LINKDIR="$(pwd)/lib/webview/ext"; command -v cygpath >/dev/null 2>&1 && LINKDIR="$(cygpath -m "$LINKDIR")"
 
 # Build
-shards build --release --no-debug --static -Dpreview_mt -Dexecution_context \
+shards build --release --no-debug --static \
   --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"

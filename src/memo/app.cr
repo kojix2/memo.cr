@@ -4,10 +4,6 @@ require "webview"
 require "random/secure"
 require "./security"
 
-{% unless flag?(:execution_context) %}
-  {% raise "Memo requires -Dexecution_context. Build with: shards build --release -Dpreview_mt -Dexecution_context" %}
-{% end %}
-
 # Configure logging from LOG_LEVEL (default info); relies on Crystal's std Log.setup_from_env
 Log.setup_from_env
 
@@ -22,8 +18,15 @@ require "./route"
 
 module Memo
   class App
-    @server_fiber : Fiber?
+    SERVER_PORT_ENV         = "MEMO_SERVER_PORT"
+    SERVER_TOKEN_ENV        = "MEMO_SERVER_TOKEN"
+    SERVER_DEBUG_ENV        = "MEMO_SERVER_DEBUG"
+    SERVER_SHUTDOWN_TIMEOUT = 2.seconds
+
+    @server_process : Process?
+    @server_finished : Channel(Nil)?
     @cleaned_up = false
+    @cleanup_mutex = Mutex.new
     @port : Int32
 
     def initialize(@debug = false)
@@ -46,16 +49,12 @@ module Memo
 
       wv = Webview.window(900, 600, Webview::SizeHints::NONE, "Memo App", @debug)
 
-      # Under execution_context, yielding here can resume this fiber on a worker
-      # thread. AppKit/WebView must be initialized before that happens.
+      start_server(wv)
+
       wv.html = startup_html(
         app_url: "http://127.0.0.1:#{@port}/?memo_token=#{Memo::Security.token}",
         health_url: "http://127.0.0.1:#{@port}/healthz"
       )
-
-      # Start the embedded server after WebView initialization to reduce the
-      # chance that startup side effects move this fiber off the main thread.
-      start_server
 
       wv.run
       wv.destroy
@@ -63,42 +62,173 @@ module Memo
       cleanup
     end
 
+    def self.run_server_from_env(debug = false) : Nil
+      port = ENV[SERVER_PORT_ENV]?.try(&.to_i?) || raise "#{SERVER_PORT_ENV} is required"
+      token = ENV[SERVER_TOKEN_ENV]? || raise "#{SERVER_TOKEN_ENV} is required"
+      run_server(port, token, debug)
+    end
+
+    def self.run_server(port : Int32, token : String, debug = false) : Nil
+      Memo::Security.token = token
+      Kemal.config.host_binding = "127.0.0.1"
+
+      Process.on_terminate do
+        begin
+          Kemal.stop if Kemal.config.running
+        rescue ex
+          STDERR.puts "Error stopping server: #{ex.message}" if debug
+        ensure
+          Memo::DBX.close rescue nil
+          exit(0)
+        end
+      end
+
+      Memo::DBX.setup
+      Kemal.run(port: port, args: nil, trap_signal: false)
+    ensure
+      Memo::DBX.close rescue nil
+    end
+
     private def cleanup
-      return if @cleaned_up
-      @cleaned_up = true
+      process = nil
+      finished = nil
+
+      @cleanup_mutex.synchronize do
+        return if @cleaned_up
+        @cleaned_up = true
+        process = @server_process
+        finished = @server_finished
+      end
 
       puts "Shutting down server..." if @debug
 
-      begin
-        Kemal.stop if Kemal.config.running
-      rescue ex
-        puts "Error stopping server: #{ex.message}" if @debug
-      end
-      # Attempt to close DB connection politely.
-      Memo::DBX.close rescue nil
-      sleep 0.1.seconds
+      terminate_server_process(process, finished)
     end
 
     private def find_available_port
-      TCPServer.open("localhost", 0) do |server|
+      TCPServer.open("127.0.0.1", 0) do |server|
         server.local_address.port
       end
     end
 
-    private def start_server
-      kemal_context = Fiber::ExecutionContext::Parallel.new("workers", 4)
-      @server_fiber = kemal_context.spawn do
-        begin
-          Memo::DBX.setup
-          Kemal.run(port: @port, args: nil, trap_signal: false)
-        rescue ex
-          puts "Server error: #{ex.message}" if @debug
+    private def start_server(wv : Webview::Webview) : Nil
+      executable = Process.executable_path || raise "cannot determine executable path"
+      finished = Channel(Nil).new(1)
+
+      env = {
+        SERVER_PORT_ENV  => @port.to_s,
+        SERVER_TOKEN_ENV => Memo::Security.token,
+      }
+      env[SERVER_DEBUG_ENV] = "1" if @debug
+
+      process = Process.new(
+        executable,
+        ["--server"],
+        env: env,
+        input: Process::Redirect::Close,
+        output: Process::Redirect::Inherit,
+        error: Process::Redirect::Inherit
+      )
+
+      @cleanup_mutex.synchronize do
+        @server_process = process
+        @server_finished = finished
+      end
+
+      Thread.new(name: "memo-server-monitor") do
+        status = process.wait
+        should_report = @cleanup_mutex.synchronize do
+          !@cleaned_up
+        end
+
+        finished.send(nil)
+
+        if should_report
+          wv.dispatch do
+            wv.html = server_error_html(status)
+          end
         end
       end
     end
 
+    private def terminate_server_process(process : Process?, finished : Channel(Nil)?) : Nil
+      return unless process
+
+      unless process.terminated?
+        process.terminate
+      end
+
+      if finished
+        select
+        when finished.receive
+          return
+        when timeout(SERVER_SHUTDOWN_TIMEOUT)
+        end
+      end
+
+      unless process.terminated?
+        process.terminate(graceful: false)
+      end
+
+      if finished
+        select
+        when finished.receive
+        when timeout(SERVER_SHUTDOWN_TIMEOUT)
+          STDERR.puts "Server process did not exit after forced termination" if @debug
+        end
+      end
+    rescue ex
+      STDERR.puts "Error stopping server process: #{ex.message}" if @debug
+    end
+
     private def startup_html(app_url : String, health_url : String) : String
       ECR.render("views/startup.ecr")
+    end
+
+    private def server_error_html(status : Process::Status) : String
+      message = status.success? ? "The local server stopped." : "The local server exited: #{status.description}."
+      <<-HTML
+      <!doctype html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Memo Server Stopped</title>
+        <style>
+          body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #1f2933;
+            background: #f6f3ee;
+          }
+
+          main {
+            width: min(30rem, calc(100vw - 3rem));
+          }
+
+          h1 {
+            margin: 0 0 0.75rem;
+            font-size: 1.6rem;
+          }
+
+          p {
+            margin: 0;
+            line-height: 1.6;
+            color: #52606d;
+          }
+        </style>
+      </head>
+      <body>
+        <main>
+          <h1>Memo server stopped</h1>
+          <p>#{HTML.escape(message)}</p>
+        </main>
+      </body>
+      </html>
+      HTML
     end
   end
 end
