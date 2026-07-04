@@ -97,7 +97,7 @@ module Memo
           data = Data.from_json(raw)
           return data.normalized
         end
-      rescue ex
+      rescue
         quarantine_corrupt_file(file_path)
       end
 

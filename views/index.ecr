@@ -194,7 +194,7 @@ async function saveNote(noteId, silent = true, throwOnError = false) {
     if (saving) {
         if (throwOnError) throw new Error('Save already in progress');
         return;
-    } 
+    }
     if (!silent) console.debug('[memo] saveNote: start id=' + noteId);
     const titleEl = document.getElementById('note-title');
     const bodyEl  = document.getElementById('note-body');

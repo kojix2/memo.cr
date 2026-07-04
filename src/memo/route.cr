@@ -52,7 +52,7 @@ module Memo
       env.request.cookies[AUTH_COOKIE_NAME]?.try(&.value)
   end
 
-  private def self.set_auth_cookie(env) : Nil
+  private def self.issue_auth_cookie(env) : Nil
     env.response.cookies << HTTP::Cookie.new(
       AUTH_COOKIE_NAME,
       Memo::Security.token,
@@ -141,7 +141,7 @@ module Memo
         end
       end
 
-      set_auth_cookie(env)
+      issue_auth_cookie(env)
     end
   end
 
@@ -149,7 +149,7 @@ module Memo
     notes = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
       select id, title, body, created_at, updated_at
       from notes order by updated_at desc
-    SQL
+      SQL
 
     # Get selected note ID from query parameter
     selected_note_id = env.params.query["note"]?.try(&.to_i64?)
@@ -225,11 +225,11 @@ module Memo
   get "/export.json" do |env|
     rows = Memo::DBX.db.query_all <<-SQL, as: {Int64, String, String, String, String}
       select id, title, body, created_at, updated_at from notes order by updated_at desc
-    SQL
+      SQL
     env.response.content_type = "application/json; charset=utf-8"
-    rows.map { |id, title, body, created_at, updated_at|
+    rows.map do |id, title, body, created_at, updated_at|
       {id: id, title: title, body: body, created_at: created_at, updated_at: updated_at}
-    }.to_json
+    end.to_json
   end
 
   get "/settings" do |_|

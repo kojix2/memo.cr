@@ -187,7 +187,7 @@ module Memo
       # startup page keeps polling /healthz, so slow but healthy boots still
       # show the user a loading screen instead of failing early.
       SERVER_START_CHECKS.times do
-        return nil if server_healthy?
+        return if server_healthy?
 
         select
         when status = exited.receive
@@ -206,6 +206,17 @@ module Memo
       false
     end
 
+    private def wait_for_process_finish(finished : Channel(Nil)?) : Bool
+      return false unless finished
+
+      select
+      when finished.receive
+        true
+      when timeout(SERVER_SHUTDOWN_TIMEOUT)
+        false
+      end
+    end
+
     private def terminate_server_process(process : Process?, finished : Channel(Nil)?) : Nil
       return unless process
 
@@ -213,24 +224,14 @@ module Memo
         process.terminate
       end
 
-      if finished
-        select
-        when finished.receive
-          return
-        when timeout(SERVER_SHUTDOWN_TIMEOUT)
-        end
-      end
+      return if wait_for_process_finish(finished)
 
       unless process.terminated?
         process.terminate(graceful: false)
       end
 
-      if finished
-        select
-        when finished.receive
-        when timeout(SERVER_SHUTDOWN_TIMEOUT)
-          STDERR.puts "Server process did not exit after forced termination" if @debug
-        end
+      unless wait_for_process_finish(finished)
+        STDERR.puts "Server process did not exit after forced termination" if @debug
       end
     rescue ex
       STDERR.puts "Error stopping server process: #{ex.message}" if @debug
@@ -243,47 +244,47 @@ module Memo
     private def server_error_html(status : Process::Status) : String
       message = status.success? ? "The local server stopped." : "The local server exited: #{status.description}."
       <<-HTML
-      <!doctype html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Memo Server Stopped</title>
-        <style>
-          body {
-            margin: 0;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            color: #1f2933;
-            background: #f6f3ee;
-          }
+        <!doctype html>
+        <html lang="en">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Memo Server Stopped</title>
+          <style>
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: grid;
+              place-items: center;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              color: #1f2933;
+              background: #f6f3ee;
+            }
 
-          main {
-            width: min(30rem, calc(100vw - 3rem));
-          }
+            main {
+              width: min(30rem, calc(100vw - 3rem));
+            }
 
-          h1 {
-            margin: 0 0 0.75rem;
-            font-size: 1.6rem;
-          }
+            h1 {
+              margin: 0 0 0.75rem;
+              font-size: 1.6rem;
+            }
 
-          p {
-            margin: 0;
-            line-height: 1.6;
-            color: #52606d;
-          }
-        </style>
-      </head>
-      <body>
-        <main>
-          <h1>Memo server stopped</h1>
-          <p>#{HTML.escape(message)}</p>
-        </main>
-      </body>
-      </html>
-      HTML
+            p {
+              margin: 0;
+              line-height: 1.6;
+              color: #52606d;
+            }
+          </style>
+        </head>
+        <body>
+          <main>
+            <h1>Memo server stopped</h1>
+            <p>#{HTML.escape(message)}</p>
+          </main>
+        </body>
+        </html>
+        HTML
     end
   end
 end
