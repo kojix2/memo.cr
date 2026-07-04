@@ -176,9 +176,10 @@ module Memo
   # Application info endpoint
   get "/api/info" do |env|
     note_count = Memo::DBX.db.query_one("select count(*) from notes", as: Int64)
-    db_path = Memo::DBX.db_path
+    db_path = Memo::DBX.current_db_path
+    db_url_source = Memo::DBX.db_url_source
     env.response.content_type = "application/json; charset=utf-8"
-    {version: Memo::VERSION, db_path: db_path, note_count: note_count, repository_url: Memo::REPOSITORY_URL}.to_json
+    {version: Memo::VERSION, db_path: db_path, db_url_source: db_url_source, note_count: note_count, repository_url: Memo::REPOSITORY_URL}.to_json
   end
 
   # Application settings endpoint

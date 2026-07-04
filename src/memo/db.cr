@@ -5,6 +5,14 @@ module Memo
   module DBX
     @@db : DB::Database?
 
+    private def self.build_time_db_url : String?
+      {% if env("MEMO_DATABASE_URL") %}
+        {{ env("MEMO_DATABASE_URL") }}
+      {% else %}
+        nil
+      {% end %}
+    end
+
     def self.data_dir : String
       {% if flag?(:windows) %}
         ENV["APPDATA"]? || ENV["USERPROFILE"]? || "."
@@ -22,11 +30,45 @@ module Memo
       File.join(app_data_dir, "memo.db")
     end
 
-    def self.db_url : String
-      if env = ENV["DATABASE_URL"]?
-        return env
+    def self.db_url_source : String
+      if present?(ENV["MEMO_DATABASE_URL"]?)
+        return "runtime_env"
       end
 
+      if present?(build_time_db_url)
+        return "build_env"
+      end
+
+      "default_path"
+    end
+
+    def self.db_url : String
+      if env = ENV["MEMO_DATABASE_URL"]?
+        env = env.strip
+        return env unless env.empty?
+      end
+
+      if compiled = build_time_db_url
+        compiled = compiled.strip
+        return compiled unless compiled.empty?
+      end
+
+      default_db_url
+    end
+
+    def self.current_db_path : String?
+      return db_path if db_url_source == "default_path"
+
+      nil
+    end
+
+    private def self.present?(value : String?) : Bool
+      return false unless value
+
+      !value.strip.empty?
+    end
+
+    private def self.default_db_url : String
       # Build a cross-platform, URI-safe sqlite3 URL.
       # Crystal's URI expects absolute file paths as: sqlite3:///path/to/file
       # On Windows, also convert backslashes to forward slashes (e.g., C:/Users/...)

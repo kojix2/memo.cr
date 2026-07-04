@@ -92,7 +92,7 @@ Encryption is not always required, but the risk should be acknowledged.
 
 ### 7) Environment Variable / Configuration Footguns (Low–Medium)
 
-If the application honors environment variables like `DATABASE_URL`, the app could be pointed to an unintended database location.
+If the build process honors environment variables like `MEMO_DATABASE_URL`, the binary could be compiled with an unintended database location.
 
 Impact:
 
