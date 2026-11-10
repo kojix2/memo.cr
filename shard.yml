@@ -10,16 +10,14 @@ targets:
     main: src/memo.cr
 
 dependencies:
-  kemal:
-    github: kemalcr/kemal
+  crystkit:
+    github: naqvis/crystkit
+    commit: e461e6d51ef2a5ddef886f1c94a41b0433e011be
   db:
     github: crystal-lang/crystal-db
   sqlite3:
     github: crystal-lang/crystal-sqlite3
-  webview:
-    github: naqvis/webview
-    branch: master
 
-crystal: '>= 1.19.1'
+crystal: '>= 1.21.0'
 
 license: MIT

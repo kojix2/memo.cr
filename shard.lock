@@ -1,0 +1,57 @@
+version: 2.0
+shards:
+  crystar:
+    git: https://github.com/naqvis/crystar.git
+    version: 0.4.0
+
+  crystkit:
+    git: https://github.com/naqvis/crystkit.git
+    version: 1.0.0+git.commit.e461e6d51ef2a5ddef886f1c94a41b0433e011be
+
+  db:
+    git: https://github.com/crystal-lang/crystal-db.git
+    version: 0.15.0
+
+  file_watcher:
+    git: https://github.com/naqvis/file_watcher.git
+    version: 0.1.0+git.commit.35cb80931798b36c4868b241cef0e8d5105b0175
+
+  fork_join:
+    git: https://github.com/naqvis/fork_join.git
+    version: 0.2.0+git.commit.b4b9bff4d34c6c1bf4c2152ba56001aadbb9d1ef
+
+  json_patch:
+    git: https://github.com/naqvis/json_patch.git
+    version: 1.0.0+git.commit.89478694298de5100a443c8263d72bfcacb0f9c2
+
+  native_desktop:
+    git: https://github.com/naqvis/native_desktop.git
+    version: 1.0.0+git.commit.a8f7d596d31ebe9d288edb52fa26f815fd3d3bbe
+
+  option_builder:
+    git: https://github.com/naqvis/option_builder.git
+    version: 0.1.0+git.commit.2b9c0d3ba2164f712ca0efa7331bb326be6139fa
+
+  safe_storage:
+    git: https://github.com/naqvis/safe_storage.git
+    version: 0.1.0+git.commit.5711f0e3519590151b09d1e75efdfba001c4c133
+
+  snappy:
+    git: https://github.com/naqvis/snappy.git
+    version: 0.2.0+git.commit.c6a7d7ae84351affa1c7ab22f5e2cf3fde9cbcbd
+
+  sqlite3:
+    git: https://github.com/crystal-lang/crystal-sqlite3.git
+    version: 0.24.0
+
+  system_info:
+    git: https://github.com/naqvis/system_info.git
+    version: 0.1.0+git.commit.16a28f0d07d693049daefba103f6c6abc439eb33
+
+  virtualfs:
+    git: https://github.com/naqvis/virtualfs.git
+    version: 0.4.2+git.commit.4d7de31f88376fa27d4562c86b6671a80130e0be
+
+  webview:
+    git: https://github.com/naqvis/webview.git
+    version: 0.2.6

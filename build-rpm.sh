@@ -5,6 +5,7 @@ set -e
 set -a
 source .env
 set +a
+source scripts/linux-env.sh
 VERSION="$(shards version .)"
 
 DIST_DIR="dist"
@@ -13,8 +14,8 @@ RPM_RELEASE="${RPM_RELEASE:-1}"
 ARCH="${RPM_ARCH:-$(uname -m)}"
 
 # RPM dependency defaults (switch by distro). Override with RPM_DEPENDS="pkg1 pkg2 ..." in .env if needed.
-DEFAULT_DEPENDS_FEDORA="webkit2gtk4.1 gtk3 glib2 sqlite-libs openssl-libs libstdc++"
-DEFAULT_DEPENDS_SUSE="libwebkit2gtk-4_1-0 libgtk-3-0 libglib-2_0-0 libsqlite3-0 libopenssl3 libstdc++6"
+DEFAULT_DEPENDS_FEDORA="webkit2gtk4.1 gtk3 glib2 sqlite-libs openssl-libs libstdc++ libX11 libXScrnSaver libnotify libappindicator-gtk3 systemd-libs libsecret speech-dispatcher"
+DEFAULT_DEPENDS_SUSE="libwebkit2gtk-4_1-0 libgtk-3-0 libglib-2_0-0 libsqlite3-0 libopenssl3 libstdc++6 libX11-6 libXss1 libnotify4 libappindicator3-1 libudev1 libsecret-1-0 libspeechd2"
 
 if [ -z "${RPM_DEPENDS:-}" ]; then
     if [ -r /etc/os-release ]; then
@@ -32,6 +33,7 @@ fi
 IFS=' ' read -r -a DEPENDS <<< "$RPM_DEPENDS"
 
 echo "Building $APP_NAME v$VERSION..."
+shards install --frozen
 shards build --release $CRFLAGS
 
 rm -rf "$DIST_DIR"

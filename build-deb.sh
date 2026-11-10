@@ -5,11 +5,13 @@ set -e
 set -a
 source .env
 set +a
+source scripts/linux-env.sh
 VERSION="$(shards version .)"
 
 DIST_DIR="dist"
 
 echo "Building $APP_NAME v$VERSION..."
+shards install --frozen
 shards build --release $CRFLAGS
 
 rm -rf "$DIST_DIR"
@@ -58,6 +60,13 @@ fpm -s dir -t deb \
     --depends "libsqlite3-0" \
     --depends "libssl3" \
     --depends "libstdc++6" \
+    --depends "libx11-6" \
+    --depends "libxss1" \
+    --depends "libnotify4" \
+    --depends "libayatana-appindicator3-1" \
+    --depends "libudev1" \
+    --depends "libsecret-1-0" \
+    --depends "libspeechd2" \
     --package "$DIST_DIR/${APP_NAME}_${VERSION}_amd64.deb" \
     -C "$TEMP_DIR" \
     .

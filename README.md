@@ -1,63 +1,45 @@
-# memo
+# Memo
 
-[![Build macOS Package](https://github.com/kojix2/memo.cr/actions/workflows/mac.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/mac.yml)
-[![Build MinGW Package](https://github.com/kojix2/memo.cr/actions/workflows/mingw.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/mingw.yml)
-[![Build Debian Package](https://github.com/kojix2/memo.cr/actions/workflows/deb.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/deb.yml)
-[![Lines of Code](https://img.shields.io/endpoint?url=https%3A%2F%2Ftokei.kojix2.net%2Fbadge%2Fgithub%2Fkojix2%2Fmemo.cr%2Flines)](https://tokei.kojix2.net/github/kojix2/memo.cr)
-![Static Badge](https://img.shields.io/badge/PURE-VIBE_CODING-magenta)
+A local notes app built with [Crystal](https://crystal-lang.org),
+[CrystKit](https://github.com/naqvis/crystkit), and SQLite.
+Supports autosave, JSON export, and adjustable editor font size.
+Existing notes and settings remain compatible.
 
-Practice with [WebView](https://github.com/naqvis/webview)
+## Build and run
 
-<img width="1012" height="712" alt="image" src="https://github.com/user-attachments/assets/f1612da2-7e5c-494e-8df7-2b99e39cf396" />
-
-- This project was made to explore how to build and distribute apps with Crystal and WebView in a simple and practical way.
-
-- It’s not meant to be a serious note-taking app, though I do plan to use it from time to time myself.
-
-## Installation
+Requires Crystal 1.21+, Shards, SQLite 3, and
+[CrystKit's platform dependencies](https://github.com/naqvis/crystkit/blob/main/guides/getting-started.md).
 
 ```sh
+shards install --frozen
+# On Linux: source scripts/linux-env.sh
 shards build --release
-```
-
-Generate app package for your platform:
-
-Debian/Ubuntu
-
-```sh
-./build-deb.sh   # for Debian/Ubuntu
-```
-
-Fedora/openSUSE (RPM)
-
-```sh
-./build-rpm.sh
-```
-
-Universal Linux (Flatpak)
-
-```sh
-./build-flatpak.sh
-```
-
-macOS
-
-```sh
-./build-mac.sh
-```
-
-Windows
-
-```sh
-bash build-mingw.sh
-```
-
-```
-powershell.exe -ExecutionPolicy Bypass -File package-win.ps1 # INNO SETUP
-```
-
-## Usage
-
-```
 bin/memo
 ```
+
+Use `--debug` for developer tools, **Cmd/Ctrl+N** for a new note,
+and **Cmd/Ctrl+S** to save. `MEMO_DATABASE_URL` overrides the database location.
+
+## Packages
+
+```sh
+./build-mac.sh       # macOS app and DMG
+./build-deb.sh       # Debian/Ubuntu (fpm)
+./build-rpm.sh       # Fedora/openSUSE (fpm)
+./build-flatpak.sh   # Flatpak (flatpak-builder)
+bash build-mingw.sh  # Windows (MSYS2 MinGW64)
+```
+
+Run `package-win.ps1` after building to create a Windows installer.
+
+## Tests
+
+```sh
+crystal spec
+node --test spec/editor_test.js
+```
+
+On Linux, source `scripts/linux-env.sh` first. With a graphical session,
+`crystal run spec/support/native_smoke.cr` also tests the native UI.
+
+See [SECURITY.md](SECURITY.md) for security details. Licensed under MIT.

@@ -264,7 +264,7 @@ write_plist() {
   <key>CFBundleExecutable</key>
   <string>$APP_NAME</string>
   <key>CFBundleIdentifier</key>
-  <string>com.example.$APP_NAME</string>
+  <string>com.github.kojix2.memo</string>
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
   <key>CFBundleVersion</key>
@@ -311,7 +311,7 @@ create_dmg() {
 # Build
 # ------------------------------------------------------------
 log "Building $APP_NAME v$VERSION..."
-shards install
+shards install --frozen
 
 build_args=(--release --link-flags "-Wl,-headerpad_max_install_names")
 if [ -n "${CRFLAGS:-}" ]; then

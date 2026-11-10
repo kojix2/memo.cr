@@ -1,11 +1,11 @@
+require "option_parser"
 require "./memo/app"
-require "./memo/version"
 
-debug = ARGV.includes?("--debug") || ENV[Memo::App::SERVER_DEBUG_ENV]? == "1"
-
-if ARGV.includes?("--server")
-  Memo::App.run_server_from_env(debug: debug)
-else
-  app = Memo::App.new(debug: debug)
-  app.run
+debug = false
+OptionParser.parse do |parser|
+  parser.banner = "Usage: memo [--debug]"
+  parser.on("--debug", "Enable WebView developer tools") { debug = true }
+  parser.on("-v", "--version", "Print version") { puts Memo::VERSION; exit }
+  parser.on("-h", "--help", "Show help") { puts parser; exit }
 end
+Memo::App.new(debug: debug).run

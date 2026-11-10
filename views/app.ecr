@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <title>Memo</title>
+  <style><%= {{ read_file("frontend/style.css") }} %></style>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Notes">
+    <header class="sidebar-header"><h1>Memo<span class="local-label">LOCAL NOTES</span></h1>
+      <button id="new-note" class="primary" disabled>+ New Note</button>
+    </header>
+    <nav id="notes-list" class="notes-list" aria-label="Select a note"><p class="list-empty">Loading notes…</p></nav>
+    <footer><span id="note-count"></span><button id="open-settings" disabled>Settings</button></footer>
+  </aside>
+  <main>
+    <div id="message" role="alert" hidden></div>
+    <section id="notes-page" class="notes-page" aria-label="Note editor">
+      <div id="empty-state" class="empty-state"><div><h2>A little space for your thoughts.</h2><p>Create a note to start writing.</p></div></div>
+      <div id="editor" class="editor" hidden>
+        <header class="editor-header"><label class="sr-only" for="note-title">Note title</label><input id="note-title" placeholder="Untitled" autocomplete="off"></header>
+        <div class="editor-content"><label class="sr-only" for="note-body">Note body</label><textarea id="note-body" placeholder="Start writing…" spellcheck="true"></textarea></div>
+        <footer class="editor-actions"><span id="save-status" role="status" aria-live="polite"></span><button id="save-note">Save</button><button id="delete-note" class="danger">Delete</button></footer>
+      </div>
+    </section>
+    <section id="settings-page" class="settings-page" aria-labelledby="settings-heading" hidden>
+      <div class="settings-container">
+        <button id="back-to-notes">← Back to notes</button>
+        <h2 id="settings-heading">Settings</h2><p class="description">Your notes stay on this device.</p>
+        <h3>Information</h3><dl id="app-info" class="card"></dl>
+        <h3>Export</h3><div class="card"><p>Save all notes as a JSON file.</p><button id="export-notes">Export JSON…</button><p id="export-status" role="status"></p></div>
+        <h3>Editor</h3><form id="font-form" class="card"><label for="editor-font-size">Body font size (px)</label><div class="font-row"><input id="editor-font-size" type="number" min="10" max="32" step="1" required><button type="submit">Save</button><span id="font-status" role="status"></span></div><p class="hint">Choose a size from 10 to 32 px.</p></form>
+      </div>
+    </section>
+  </main>
+  <script><%= {{ read_file("frontend/editor.js") }} %></script>
+  <script><%= {{ read_file("frontend/app.js") }} %></script>
+</body>
+</html>

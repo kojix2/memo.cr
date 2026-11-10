@@ -5,6 +5,7 @@ set -e
 set -a
 source .env
 set +a
+source scripts/linux-env.sh
 VERSION="$(shards version .)"
 
 DIST_DIR="dist"
@@ -13,6 +14,7 @@ APP_ID=$(grep "^app-id:" "$MANIFEST" | awk '{print $2}')
 CRFLAGS="${CRFLAGS:-}"
 
 echo "Building $APP_NAME v$VERSION for Flatpak..."
+shards install --frozen
 shards build --release $CRFLAGS
 
 if [ ! -f "bin/$APP_NAME" ]; then

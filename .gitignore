@@ -4,6 +4,7 @@
 /.shards/
 *.dwarf
 *.lock
+!shard.lock
 
 /_wv2
 /dist

@@ -16,6 +16,12 @@ jobs:
         with:
           crystal: latest
 
+      - name: Test
+        run: |
+          shards install --frozen
+          crystal spec
+          node --test spec/editor_test.js
+
       - run: bash build-mac.sh
 
       - name: Upload artifacts

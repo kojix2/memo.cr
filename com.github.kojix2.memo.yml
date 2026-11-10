@@ -10,15 +10,8 @@ finish-args:
   - --socket=fallback-x11
   - --share=ipc
   
-  # Network access (for web server functionality)
-  - --share=network
-  
-  # Home directory access (for storing memos)
+  # The native GTK save dialog needs access to export destinations.
   - --filesystem=home
-  
-  # Access to themes
-  - --socket=session-bus
-  - --socket=system-bus
 
 modules:
   # This module assumes you've pre-built the binary

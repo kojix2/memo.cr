@@ -18,7 +18,7 @@ export CXX="g++ -I$(pwd)/_wv2/build/native/include"
 export CXXFLAGS="-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
 
 # Dependencies
-shards install --without-development
+shards install --frozen --without-development
 
 # Link directory for webview ext
 LINKDIR="$(pwd)/lib/webview/ext"; command -v cygpath >/dev/null 2>&1 && LINKDIR="$(cygpath -m "$LINKDIR")"

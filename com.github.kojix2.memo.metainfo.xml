@@ -7,7 +7,7 @@
   <summary>Simple memo app</summary>
   <description>
     <p>
-      A simple and practical note-taking application built with Crystal and WebView.
+      A simple and practical note-taking application built with Crystal and CrystKit.
       Lightweight and easy to use for quick notes and memos.
     </p>
   </description>

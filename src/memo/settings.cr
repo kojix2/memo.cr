@@ -4,7 +4,7 @@ require "random/secure"
 require "./db"
 
 module Memo
-  module Settings
+  class Settings
     SETTINGS_VERSION            =  1
     DEFAULT_EDITOR_FONT_SIZE_PX = 16
     MIN_EDITOR_FONT_SIZE_PX     = 10
@@ -46,37 +46,37 @@ module Memo
       end
     end
 
-    @@mutex = Mutex.new
-    @@data : Data?
+    @mutex = Mutex.new
+    @data : Data?
 
-    def self.path : String
-      # Keep settings next to the default DB (Memo::DBX.db_path).
-      File.join(File.dirname(Memo::DBX.db_path), "settings.json")
+    getter path : String
+
+    def initialize(@path : String = File.join(File.dirname(DBX.db_path), "settings.json"))
     end
 
-    def self.load : Data
-      @@mutex.synchronize do
-        if cached = @@data
+    def load : Data
+      @mutex.synchronize do
+        if cached = @data
           return cached
         end
 
         data = load_from_disk
-        @@data = data
+        @data = data
         data
       end
     end
 
-    def self.editor_font_size_px : Int32
+    def editor_font_size_px : Int32
       load.ui.editor_font_size_px
     end
 
-    def self.update_editor_font_size_px(value : Int32)
+    def update_editor_font_size_px(value : Int32)
       unless MIN_EDITOR_FONT_SIZE_PX <= value <= MAX_EDITOR_FONT_SIZE_PX
         raise ArgumentError.new("editor_font_size_px must be between #{MIN_EDITOR_FONT_SIZE_PX} and #{MAX_EDITOR_FONT_SIZE_PX}")
       end
 
-      @@mutex.synchronize do
-        current = (@@data || load_from_disk)
+      @mutex.synchronize do
+        current = (@data || load_from_disk)
         updated = current
 
         ui = updated.ui
@@ -85,11 +85,11 @@ module Memo
 
         updated = updated.normalized
         write_to_disk(updated)
-        @@data = updated
+        @data = updated
       end
     end
 
-    private def self.load_from_disk : Data
+    private def load_from_disk : Data
       file_path = path
       begin
         if File.exists?(file_path)
@@ -104,14 +104,14 @@ module Memo
       Data.new.normalized
     end
 
-    private def self.write_to_disk(data : Data)
+    private def write_to_disk(data : Data)
       file_path = path
       dir = File.dirname(file_path)
       Dir.mkdir_p(dir) unless Dir.exists?(dir)
 
       bak_path = file_path + ".bak"
 
-      tmp_path = file_path + ".tmp"
+      tmp_path = file_path + ".tmp.#{Random::Secure.hex(8)}"
       File.write(tmp_path, data.to_json)
 
       if File.exists?(file_path)
@@ -136,7 +136,7 @@ module Memo
       end
     end
 
-    private def self.quarantine_corrupt_file(file_path : String)
+    private def quarantine_corrupt_file(file_path : String)
       return unless File.exists?(file_path)
 
       ts = Time.local.to_s("%Y%m%d%H%M%S")

@@ -25,8 +25,18 @@ jobs:
             libgtk-3-dev \
             libsqlite3-dev \
             libssl-dev \
+            libx11-dev libxss-dev libdbus-1-dev \
+            libnotify-dev libayatana-appindicator3-dev \
+            libudev-dev libsecret-1-dev libspeechd-dev \
             pkg-config
           sudo gem install --no-document fpm
+
+      - name: Test
+        run: |
+          shards install --frozen
+          source scripts/linux-env.sh
+          crystal spec
+          node --test spec/editor_test.js
 
       - name: Build Debian package
         run: |
