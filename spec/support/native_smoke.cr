@@ -42,15 +42,12 @@ settings = Memo::Settings.new(File.join(root, "settings.json"))
 settings.update_sidebar_width_px(320)
 app = Memo::App.new(settings: settings,
   dialog_provider: SmokeDialog.new(export_path)).build
-failed_once = false
-app.router.unregister_command("notes.save")
-app.command("notes.save", Memo::SaveNote) do |request|
-  if request.body == "Simulated failing save" && !failed_once
-    failed_once = true
-    raise "Simulated database write failure"
-  end
-  Memo::Store.new(Memo::DBX.db).save(request)
-end
+# Fail a real database write, keeping the application's state publication path.
+Memo::DBX.db.exec <<-SQL
+  create trigger smoke_save_failure before update on notes
+  when new.body = 'Simulated failing save'
+  begin select raise(abort, 'Simulated database write failure'); end;
+  SQL
 app.command("smoke.result", String) { |message| result = message }
 app.command("smoke.quit") { app.quit; true }
 app.command("smoke.native_close") do
@@ -115,7 +112,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       $('new-note').click();
       await wait(() => document.querySelectorAll('.note-item').length === 2 && !$('new-note').disabled);
       if (document.querySelector('.note-item script')) throw new Error('Note rendered as HTML');
-      const first = (await ipc.invoke('notes.list')).find(n => n.body.startsWith('First note'));
+      const first = (await ipc.state('notes')).value.find(n => n.body.startsWith('First note'));
       if (!first || first.title !== '<script>日本語😀</script>') throw new Error('Navigation lost edits');
       document.querySelectorAll('.note-item')[1].click();
       await wait(() => $('note-title').value === first.title && !$('new-note').disabled);

@@ -6,20 +6,29 @@ require "./version"
 module Memo
   module Commands
     CAPABILITY = "memo:access"
-    NAMES      = %w(notes.list notes.create notes.save notes.delete notes.export app.info settings.get settings.save settings.save_sidebar_width app.ready app.close)
+    NAMES      = %w(__crystkit.state.attach notes.create notes.save notes.delete notes.export app.info settings.get settings.save settings.save_sidebar_width app.ready app.close)
+    IPC_POLICY = CrystKit::IPCConfig.new(NAMES.to_h do |name|
+      {name, CrystKit::IPCCommandOverride.new(capability: CAPABILITY)}
+    end)
 
     def self.register(app : CrystKit::App, store : Store, settings : Settings)
-      # Commands expose note operations only; the frontend cannot execute SQL
-      # or choose arbitrary file paths. Export uses a native save dialog.
-      NAMES.each do |name|
-        app.router.policy_resolver.register_override(name,
-          CrystKit::IPC::CommandPolicy.new(capability: CAPABILITY))
+      # SQLite is authoritative; CrystKit mirrors committed notes to the UI.
+      notes = app.state("notes", Array(Note)) { store.list }
+      refresh = -> { notes.value = store.list }
+      app.command("notes.create") do
+        note = store.create
+        refresh.call
+        note
       end
-
-      app.command("notes.list") { store.list }
-      app.command("notes.create") { store.create }
-      app.command("notes.save", SaveNote) { |request| store.save(request) }
-      app.command("notes.delete", Int64) { |id| store.delete(id) }
+      app.command("notes.save", SaveNote) do |request|
+        note = store.save(request)
+        refresh.call
+        note
+      end
+      app.command("notes.delete", Int64) do |id|
+        store.delete(id)
+        refresh.call.first?
+      end
       app.command("app.info") do
         {version: VERSION, db_path: DBX.current_db_path, db_url_source: DBX.db_url_source,
          note_count: store.count, repository_url: REPOSITORY_URL}

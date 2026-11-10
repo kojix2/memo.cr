@@ -33,6 +33,7 @@ module Memo
         version: VERSION,
         identifier: "com.github.kojix2.memo",
         storage_dir: Path[File.dirname(settings.path)],
+        ipc: Commands::IPC_POLICY,
         asset_protocol_enabled: false,
       )
       app = CrystKit::App.new(config)

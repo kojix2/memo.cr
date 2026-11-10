@@ -1,9 +1,8 @@
 /* A single save queue owns the editor buffer. Edits made while an IPC save
  * is in flight remain dirty and are persisted before flush() resolves. */
 class MemoEditor {
-  constructor(invoke, onSaved = () => {}, onStatus = () => {}) {
+  constructor(invoke, onStatus = () => {}) {
     this.invoke = invoke;
-    this.onSaved = onSaved;
     this.onStatus = onStatus;
     this.note = null;
     this.revision = 0;
@@ -39,9 +38,8 @@ class MemoEditor {
       const { id, title, body } = this.note;
       this.onStatus('Saving…');
       try {
-        const saved = await this.invoke('notes.save', { id, title, body });
+        await this.invoke('notes.save', { id, title, body });
         this.savedRevision = revision;
-        this.onSaved(saved);
       } catch (error) {
         this.onStatus('Save failed — ' + error.message, true);
         throw error;

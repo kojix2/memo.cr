@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const ipc = window.__CRYSTKIT_IPC__;
   const invoke = (name, payload) => ipc.invoke(name, payload);
-  let notes = [];
+  let notes;
   let busy = false;
   let loaded = false;
   let timer;
@@ -17,11 +17,7 @@
   let sidebarWidth = 280;
   let sidebarDrag = null;
   let sidebarSave = Promise.resolve();
-  const editor = new MemoEditor(invoke, saved => {
-    notes = notes.map(note => note.id === saved.id ? saved : note);
-    notes.sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id - a.id);
-    renderList();
-  }, (text, error = false) => {
+  const editor = new MemoEditor(invoke, (text, error = false) => {
     $('save-status').textContent = text;
     if (error) showError(text);
   });
@@ -105,7 +101,7 @@
   function renderList() {
     const scrollTop = $('notes-list').scrollTop;
     const fragment = document.createDocumentFragment();
-    for (const note of notes) {
+    for (const note of notes.value) {
       const button = document.createElement('button');
       const active = editor.note?.id === note.id;
       button.className = 'note-item' + (active ? ' active' : '');
@@ -123,11 +119,11 @@
       button.disabled = busy;
       button.addEventListener('click', () => action(async () => {
         await flush();
-        showNote(notes.find(item => item.id === note.id));
+        showNote(notes.value.find(item => item.id === note.id));
       }));
       fragment.appendChild(button);
     }
-    if (!notes.length) {
+    if (!notes.value.length) {
       const empty = document.createElement('p');
       empty.className = 'list-empty';
       empty.textContent = 'No notes yet';
@@ -135,7 +131,7 @@
     }
     $('notes-list').replaceChildren(fragment);
     $('notes-list').scrollTop = scrollTop;
-    $('note-count').textContent = `${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`;
+    $('note-count').textContent = `${notes.value.length} ${notes.value.length === 1 ? 'note' : 'notes'}`;
   }
   function disarmDelete() {
     clearTimeout(deleteTimer);
@@ -175,7 +171,6 @@
   $('new-note').addEventListener('click', () => action(async () => {
     await flush();
     const note = await invoke('notes.create');
-    notes.unshift(note);
     showNote(note);
     $('note-body').focus();
   }));
@@ -192,9 +187,7 @@
       // Drain autosaves first so a late write can never resurrect a deleted note.
       await flush();
       const id = editor.note.id;
-      await invoke('notes.delete', id);
-      notes = notes.filter(note => note.id !== id);
-      showNote(notes[0] || null);
+      showNote(await invoke('notes.delete', id));
     });
   });
   $('open-settings').addEventListener('click', () => action(async () => {
@@ -273,14 +266,15 @@
   (async () => {
     try {
       await invoke('app.ready');
-      const [loadedNotes, settings] = await Promise.all([invoke('notes.list'), invoke('settings.get')]);
-      notes = loadedNotes;
+      const [noteState, settings] = await Promise.all([ipc.state('notes'), invoke('settings.get')]);
+      notes = noteState;
+      notes.subscribe(renderList);
       sidebarWidth = settings.ui.sidebar_width_px;
       renderSidebarWidth();
       $('editor-font-size').value = settings.ui.editor_font_size_px;
       document.documentElement.style.setProperty('--editor-font-size', settings.ui.editor_font_size_px + 'px');
       loaded = true;
-      showNote(notes[0] || null);
+      showNote(notes.value[0] || null);
       updateButtons();
     } catch (error) { showError(error); }
   })();
