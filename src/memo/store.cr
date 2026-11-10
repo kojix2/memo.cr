@@ -22,8 +22,9 @@ module Memo
 
     def create : Note
       now = DBX.now_s
+      # An Array avoids a Crystal 1.22 Windows codegen bug with all-String tuples.
       result = @db.exec("insert into notes(title, body, created_at, updated_at) values(?, ?, ?, ?)",
-        Time.local.to_s("%Y-%m-%d"), "", now, now)
+        args: [Time.local.to_s("%Y-%m-%d"), "", now, now])
       find(result.last_insert_id)
     end
 
