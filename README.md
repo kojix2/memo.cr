@@ -27,7 +27,7 @@ and **Cmd/Ctrl+S** to save. `MEMO_DATABASE_URL` overrides the database location.
 ./build-deb.sh       # Debian/Ubuntu (fpm)
 ./build-rpm.sh       # Fedora/openSUSE (fpm)
 ./build-flatpak.sh   # Flatpak (flatpak-builder)
-bash build-mingw.sh  # Windows (MSYS2 MinGW64)
+bash build-mingw.sh  # Windows (MSYS2 UCRT64)
 ```
 
 Run `package-win.ps1` after building to create a Windows installer.

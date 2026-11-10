@@ -22,12 +22,11 @@ if ($env:INNO_SETUP_PATH) {
     $INNO_SETUP_PATH = $env:INNO_SETUP_PATH
 }
 
-# ARCH detection: env > .env (already loaded) > MSYSTEM hint > default
+# Artifact suffix for the supported UCRT64 toolchain; allow an explicit override.
 if (-not (Get-Variable -Name ARCH -ErrorAction SilentlyContinue)) { $ARCH = $null }
 if ($env:ARCH) { $ARCH = $env:ARCH }
 elseif ($env:MSYSTEM -match 'UCRT64') { $ARCH = 'ucrt64' }
-elseif ($env:MSYSTEM -match 'MINGW64') { $ARCH = 'mingw64' }
-if (-not $ARCH) { $ARCH = 'mingw64' }
+if (-not $ARCH) { $ARCH = 'ucrt64' }
 
 $EXECUTABLE_PATH = "bin/$APP_NAME.exe"
 $DIST_DIR = "dist"

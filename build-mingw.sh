@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build for Windows (MinGW64) using MSYS2; set WV2_VER to override version
+# Build for Windows using MSYS2 UCRT64; set WV2_VER to override version
+if [[ "${MSYSTEM:-}" != "UCRT64" ]]; then
+    echo "error: run this script in the MSYS2 UCRT64 environment" >&2
+    exit 1
+fi
+
 : "${WV2_VER:=1.0.1150.38}"
 
 # Must run from repository root
