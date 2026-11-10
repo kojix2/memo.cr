@@ -38,7 +38,7 @@ module Memo
       )
       app = CrystKit::App.new(config)
       app.grant(Commands::CAPABILITY, "dialog:save")
-      Commands.register(app, store, settings)
+      Commands.register(app, store, settings, CrystKit::Features::MessageDialog.new(@dialog_provider))
       app.on_shutdown { DBX.close }
 
       dialog = CrystKit::Features::FileDialog.new(app.security, @dialog_provider)

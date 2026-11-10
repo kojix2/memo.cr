@@ -4,34 +4,7 @@ require "file_utils"
 require "random/secure"
 require "../../src/memo/app"
 
-class SmokeDialog < CrystKit::Features::DialogProvider
-  def initialize(@path : String)
-  end
-
-  def open_file(options : CrystKit::Features::OpenFileOptions) : String?
-    nil
-  end
-
-  def open_files(options : CrystKit::Features::OpenFileOptions) : Array(String)
-    [] of String
-  end
-
-  def save_file(options : CrystKit::Features::SaveFileOptions) : String?
-    @path
-  end
-
-  def select_folder(options : CrystKit::Features::FolderOptions) : String?
-    nil
-  end
-
-  def message(title : String, message : String, kind : Int32) : Bool
-    true
-  end
-
-  def confirm(title : String, message : String) : Bool
-    true
-  end
-end
+require "./dialog_provider"
 
 root = File.join(Dir.tempdir, "memo-native-smoke-#{Random::Secure.hex(8)}")
 Dir.mkdir_p(root)
@@ -40,14 +13,16 @@ result = "No result received from the WebView"
 export_path = File.join(root, "export.json")
 settings = Memo::Settings.new(File.join(root, "settings.json"))
 settings.update_sidebar_width_px(320)
-app = Memo::App.new(settings: settings,
-  dialog_provider: SmokeDialog.new(export_path)).build
+dialogs = TestDialogProvider.new(export_path)
+app = Memo::App.new(settings: settings, dialog_provider: dialogs).build
 # Fail a real database write, keeping the application's state publication path.
 Memo::DBX.db.exec <<-SQL
   create trigger smoke_save_failure before update on notes
   when new.body = 'Simulated failing save'
   begin select raise(abort, 'Simulated database write failure'); end;
   SQL
+app.command("smoke.confirm_delete", Bool) { |confirmed| dialogs.confirmed = confirmed }
+app.command("smoke.confirm_count") { dialogs.confirm_count }
 app.command("smoke.result", String) { |message| result = message }
 app.command("smoke.quit") { app.quit; true }
 app.command("smoke.native_close") do
@@ -124,7 +99,15 @@ app.primary_window.not_nil!.init(<<-'JS')
       $('export-notes').click();
       await wait(() => $('export-status').textContent.startsWith('Saved to'));
       $('back-to-notes').click();
+      await ipc.invoke('smoke.confirm_delete', false);
+      const cancelledTitle = $('note-title').value;
+      const cancelledBody = $('note-body').value;
       $('delete-note').click();
+      await wait(async () => (await ipc.invoke('smoke.confirm_count')) === 1 && !$('delete-note').disabled);
+      if (document.querySelectorAll('.note-item').length !== 2 || $('note-title').value !== cancelledTitle || $('note-body').value !== cancelledBody) {
+        throw new Error('Cancelling delete changed the note');
+      }
+      await ipc.invoke('smoke.confirm_delete', true);
       $('delete-note').click();
       await wait(() => document.querySelectorAll('.note-item').length === 1 && !$('new-note').disabled);
       edit('note-body', 'Simulated failing save');
@@ -159,7 +142,7 @@ begin
   raise "Settings did not persist" unless size == 23
   restored_width = Memo::Settings.new(File.join(root, "settings.json")).sidebar_width_px
   raise "Sidebar width did not persist" unless restored_width == 360
-  puts "Native smoke passed: sidebar resize and persistence, UI, IPC, Unicode, navigation saves, settings, export, delete, failed close recovery, and close flush"
+  puts "Native smoke passed: sidebar resize and persistence, UI, IPC, Unicode, navigation saves, settings, export, confirmed and cancelled delete, failed close recovery, and close flush"
 ensure
   Memo::DBX.close
   FileUtils.rm_rf(root)

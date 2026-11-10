@@ -37,7 +37,6 @@ input::placeholder, textarea::placeholder { color: #b8aa8a; }
 .editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid #eee6bc; }
 #save-status { margin-right: auto; font-size: 12px; color: #998971; }
 .danger { background: transparent; }
-.danger.armed { background: #a73c32; color: white; border-color: #a73c32; }
 .empty-state { flex: 1; display: grid; place-items: center; padding: 30px; text-align: center; color: #a59676; }
 .empty-state h2 { font-size: 21px; font-weight: 500; }
 .empty-state p { font-size: 14px; }

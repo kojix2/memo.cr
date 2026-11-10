@@ -2,6 +2,7 @@ require "spec"
 require "file_utils"
 require "random/secure"
 require "../src/memo/commands"
+require "./support/dialog_provider"
 
 # Every persistence test owns a temporary database and settings file.
 # Neither the user's notes nor their default application-data directory is used.

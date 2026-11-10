@@ -7,8 +7,6 @@
   let busy = false;
   let loaded = false;
   let timer;
-  let deleteTimer;
-  let deleteArmed = false;
   let closing = false;
   let composing = false;
   let settingsOpen = false;
@@ -133,15 +131,8 @@
     $('notes-list').scrollTop = scrollTop;
     $('note-count').textContent = `${notes.value.length} ${notes.value.length === 1 ? 'note' : 'notes'}`;
   }
-  function disarmDelete() {
-    clearTimeout(deleteTimer);
-    deleteArmed = false;
-    $('delete-note').textContent = 'Delete';
-    $('delete-note').classList.remove('armed');
-  }
   function showNote(note) {
     editor.select(note);
-    disarmDelete();
     $('empty-state').hidden = !!note;
     $('editor').hidden = !note;
     $('note-title').value = note?.title || '';
@@ -175,21 +166,12 @@
     $('note-body').focus();
   }));
   $('save-note').addEventListener('click', () => action(flush));
-  $('delete-note').addEventListener('click', () => {
-    if (!deleteArmed) {
-      deleteArmed = true;
-      $('delete-note').textContent = 'Really delete?';
-      $('delete-note').classList.add('armed');
-      deleteTimer = setTimeout(disarmDelete, 3000);
-      return;
-    }
-    action(async () => {
-      // Drain autosaves first so a late write can never resurrect a deleted note.
-      await flush();
-      const id = editor.note.id;
-      showNote(await invoke('notes.delete', id));
-    });
-  });
+  $('delete-note').addEventListener('click', () => action(async () => {
+    await flush();
+    const id = editor.note.id;
+    const next = await invoke('notes.delete', id);
+    if (!next || next.id !== id) showNote(next);
+  }));
   $('open-settings').addEventListener('click', () => action(async () => {
     await flush();
     const info = await invoke('app.info');

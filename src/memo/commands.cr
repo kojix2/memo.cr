@@ -11,7 +11,8 @@ module Memo
       {name, CrystKit::IPCCommandOverride.new(capability: CAPABILITY)}
     end)
 
-    def self.register(app : CrystKit::App, store : Store, settings : Settings)
+    def self.register(app : CrystKit::App, store : Store, settings : Settings,
+                      dialog : CrystKit::Features::MessageDialog)
       # SQLite is authoritative; CrystKit mirrors committed notes to the UI.
       notes = app.state("notes", Array(Note)) { store.list }
       refresh = -> { notes.value = store.list }
@@ -26,6 +27,10 @@ module Memo
         note
       end
       app.command("notes.delete", Int64) do |id|
+        note = store.find(id)
+        # Cancellation keeps this note; deletion returns the next selection.
+        next note unless dialog.confirm(CrystKit::Features::ConfirmOptions.new(
+                           title: "Delete note", message: "Delete this note? This cannot be undone."))
         store.delete(id)
         refresh.call.first?
       end
