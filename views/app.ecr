@@ -8,13 +8,16 @@
   <style><%= {{ read_file("frontend/style.css") }} %></style>
 </head>
 <body>
-  <aside class="sidebar" aria-label="Notes">
+  <aside id="notes-sidebar" class="sidebar" aria-label="Notes">
     <header class="sidebar-header"><h1>Memo<span class="local-label">LOCAL NOTES</span></h1>
       <button id="new-note" class="primary" disabled>+ New Note</button>
     </header>
     <nav id="notes-list" class="notes-list" aria-label="Select a note"><p class="list-empty">Loading notes…</p></nav>
     <footer><span id="note-count"></span><button id="open-settings" disabled>Settings</button></footer>
   </aside>
+  <div id="sidebar-resizer" class="sidebar-resizer" role="separator" tabindex="0"
+       aria-label="Resize notes sidebar" aria-controls="notes-sidebar" aria-orientation="vertical"
+       aria-valuemin="150" aria-valuemax="600" aria-valuenow="280"></div>
   <main>
     <div id="message" role="alert" hidden></div>
     <section id="notes-page" class="notes-page" aria-label="Note editor">

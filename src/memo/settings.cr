@@ -5,10 +5,13 @@ require "./db"
 
 module Memo
   class Settings
-    SETTINGS_VERSION            =  1
-    DEFAULT_EDITOR_FONT_SIZE_PX = 16
-    MIN_EDITOR_FONT_SIZE_PX     = 10
-    MAX_EDITOR_FONT_SIZE_PX     = 32
+    SETTINGS_VERSION            =   1
+    DEFAULT_EDITOR_FONT_SIZE_PX =  16
+    MIN_EDITOR_FONT_SIZE_PX     =  10
+    MAX_EDITOR_FONT_SIZE_PX     =  32
+    DEFAULT_SIDEBAR_WIDTH_PX    = 280
+    MIN_SIDEBAR_WIDTH_PX        = 150
+    MAX_SIDEBAR_WIDTH_PX        = 600
 
     @[JSON::Serializable::Options(ignore_unknown_keys: true)]
     struct Data
@@ -33,8 +36,10 @@ module Memo
       include JSON::Serializable
 
       property editor_font_size_px : Int32
+      property sidebar_width_px : Int32 = DEFAULT_SIDEBAR_WIDTH_PX
 
-      def initialize(@editor_font_size_px : Int32 = DEFAULT_EDITOR_FONT_SIZE_PX)
+      def initialize(@editor_font_size_px : Int32 = DEFAULT_EDITOR_FONT_SIZE_PX,
+                     @sidebar_width_px : Int32 = DEFAULT_SIDEBAR_WIDTH_PX)
       end
 
       def normalized : UI
@@ -42,7 +47,11 @@ module Memo
         if size < MIN_EDITOR_FONT_SIZE_PX || size > MAX_EDITOR_FONT_SIZE_PX
           size = DEFAULT_EDITOR_FONT_SIZE_PX
         end
-        UI.new(editor_font_size_px: size)
+        width = sidebar_width_px
+        unless MIN_SIDEBAR_WIDTH_PX <= width <= MAX_SIDEBAR_WIDTH_PX
+          width = DEFAULT_SIDEBAR_WIDTH_PX
+        end
+        UI.new(editor_font_size_px: size, sidebar_width_px: width)
       end
     end
 
@@ -70,19 +79,36 @@ module Memo
       load.ui.editor_font_size_px
     end
 
+    def sidebar_width_px : Int32
+      load.ui.sidebar_width_px
+    end
+
     def update_editor_font_size_px(value : Int32)
       unless MIN_EDITOR_FONT_SIZE_PX <= value <= MAX_EDITOR_FONT_SIZE_PX
         raise ArgumentError.new("editor_font_size_px must be between #{MIN_EDITOR_FONT_SIZE_PX} and #{MAX_EDITOR_FONT_SIZE_PX}")
       end
 
-      @mutex.synchronize do
-        current = (@data || load_from_disk)
-        updated = current
-
-        ui = updated.ui
+      update_ui do |ui|
         ui.editor_font_size_px = value
-        updated.ui = ui
+        ui
+      end
+    end
 
+    def update_sidebar_width_px(value : Int32)
+      unless MIN_SIDEBAR_WIDTH_PX <= value <= MAX_SIDEBAR_WIDTH_PX
+        raise ArgumentError.new("sidebar_width_px must be between #{MIN_SIDEBAR_WIDTH_PX} and #{MAX_SIDEBAR_WIDTH_PX}")
+      end
+
+      update_ui do |ui|
+        ui.sidebar_width_px = value
+        ui
+      end
+    end
+
+    private def update_ui(&block : UI -> UI)
+      @mutex.synchronize do
+        updated = (@data || load_from_disk)
+        updated.ui = block.call(updated.ui)
         updated = updated.normalized
         write_to_disk(updated)
         @data = updated

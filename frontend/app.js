@@ -12,6 +12,11 @@
   let closing = false;
   let composing = false;
   let settingsOpen = false;
+  const sidebar = $('notes-sidebar');
+  const splitter = $('sidebar-resizer');
+  let sidebarWidth = 280;
+  let sidebarDrag = null;
+  let sidebarSave = Promise.resolve();
   const editor = new MemoEditor(invoke, saved => {
     notes = notes.map(note => note.id === saved.id ? saved : note);
     notes.sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.id - a.id);
@@ -26,6 +31,57 @@
     $('message').hidden = false;
   }
   function clearError() { $('message').hidden = true; }
+  function maxSidebarWidth() {
+    // Leave space for the splitter and at least 240px of editor content.
+    return Math.max(150, Math.min(600, document.documentElement.clientWidth - 246));
+  }
+  function renderSidebarWidth() {
+    const max = maxSidebarWidth();
+    const width = Math.min(sidebarWidth, max);
+    sidebar.style.setProperty('--sidebar-width', width + 'px');
+    splitter.setAttribute('aria-valuemax', max);
+    splitter.setAttribute('aria-valuenow', width);
+  }
+  function setSidebarWidth(width) {
+    sidebarWidth = Math.round(Math.max(150, Math.min(width, maxSidebarWidth())));
+    renderSidebarWidth();
+  }
+  function persistSidebarWidth() {
+    const width = sidebarWidth;
+    sidebarSave = sidebarSave.then(() => invoke('settings.save_sidebar_width', width)).catch(showError);
+  }
+  function finishSidebarResize(event) {
+    if (!sidebarDrag || (event && event.pointerId !== sidebarDrag.pointerId)) return;
+    const { pointerId } = sidebarDrag;
+    sidebarDrag = null;
+    document.body.classList.remove('resizing-sidebar');
+    if (splitter.hasPointerCapture(pointerId)) splitter.releasePointerCapture(pointerId);
+    persistSidebarWidth();
+  }
+  splitter.addEventListener('pointerdown', event => {
+    if (!loaded || closing || sidebarDrag || event.button !== 0 || !event.isPrimary) return;
+    event.preventDefault();
+    splitter.setPointerCapture(event.pointerId);
+    sidebarDrag = { pointerId: event.pointerId, x: event.clientX, width: sidebar.getBoundingClientRect().width };
+    document.body.classList.add('resizing-sidebar');
+  });
+  splitter.addEventListener('pointermove', event => {
+    if (!sidebarDrag || event.pointerId !== sidebarDrag.pointerId) return;
+    setSidebarWidth(sidebarDrag.width + event.clientX - sidebarDrag.x);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    splitter.addEventListener(type, finishSidebarResize);
+  }
+  splitter.addEventListener('keydown', event => {
+    if (!loaded || closing || event.altKey || event.ctrlKey || event.metaKey) return;
+    const width = sidebar.getBoundingClientRect().width;
+    const next = { ArrowLeft: width - 10, ArrowRight: width + 10, Home: 150, End: maxSidebarWidth() }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    setSidebarWidth(next);
+    persistSidebarWidth();
+  });
+  window.addEventListener('resize', renderSidebarWidth);
   function updateButtons() {
     $('new-note').disabled = $('open-settings').disabled = busy || closing || !loaded;
     $('save-note').disabled = $('delete-note').disabled = busy || !editor.note;
@@ -196,6 +252,8 @@
       busy = true;
       updateButtons();
       $('note-title').readOnly = $('note-body').readOnly = true;
+      finishSidebarResize();
+      await sidebarSave;
       await flush();
       await invoke('app.close');
     } catch (error) {
@@ -217,6 +275,8 @@
       await invoke('app.ready');
       const [loadedNotes, settings] = await Promise.all([invoke('notes.list'), invoke('settings.get')]);
       notes = loadedNotes;
+      sidebarWidth = settings.ui.sidebar_width_px;
+      renderSidebarWidth();
       $('editor-font-size').value = settings.ui.editor_font_size_px;
       document.documentElement.style.setProperty('--editor-font-size', settings.ui.editor_font_size_px + 'px');
       loaded = true;

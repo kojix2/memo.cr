@@ -6,7 +6,7 @@ require "./version"
 module Memo
   module Commands
     CAPABILITY = "memo:access"
-    NAMES      = %w(notes.list notes.create notes.save notes.delete notes.export app.info settings.get settings.save app.ready app.close)
+    NAMES      = %w(notes.list notes.create notes.save notes.delete notes.export app.info settings.get settings.save settings.save_sidebar_width app.ready app.close)
 
     def self.register(app : CrystKit::App, store : Store, settings : Settings)
       # Commands expose note operations only; the frontend cannot execute SQL
@@ -29,11 +29,16 @@ module Memo
           editor_font_size_px:     settings.editor_font_size_px,
           min_editor_font_size_px: Settings::MIN_EDITOR_FONT_SIZE_PX,
           max_editor_font_size_px: Settings::MAX_EDITOR_FONT_SIZE_PX,
+          sidebar_width_px:        settings.sidebar_width_px,
         }}
       end
       app.command("settings.save", Int32) do |size|
         settings.update_editor_font_size_px(size)
         {editor_font_size_px: settings.editor_font_size_px}
+      end
+      app.command("settings.save_sidebar_width", Int32) do |width|
+        settings.update_sidebar_width_px(width)
+        {sidebar_width_px: settings.sidebar_width_px}
       end
     end
   end

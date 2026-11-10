@@ -7,7 +7,12 @@ button { border: 1px solid #d9ce94; border-radius: 6px; padding: 8px 14px; backg
 button:hover { background: #eee2a0; }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #a5813e; outline-offset: 2px; }
-.sidebar { flex: 0 0 280px; display: flex; flex-direction: column; border-right: 1px solid #e6ddb3; }
+.sidebar { flex: 0 0 var(--sidebar-width, 280px); min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-resizer { flex: 0 0 6px; position: relative; cursor: col-resize; touch-action: none; }
+.sidebar-resizer::before { content: ""; position: absolute; inset: 0 auto 0 2px; width: 1px; background: #e6ddb3; }
+.sidebar-resizer:hover, .sidebar-resizer:focus-visible { background: #eee3a0; outline: none; }
+.sidebar-resizer:focus-visible::before { background: #a5813e; }
+.resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
 .sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid #e6ddb3; }
 h1 { font-size: 26px; margin: 0 0 22px; font-weight: 600; letter-spacing: -.8px; }
 .local-label { display: block; margin-top: 5px; font-size: 9px; letter-spacing: 2px; color: #998971; font-weight: 500; }
@@ -52,5 +57,5 @@ dt { color: #998971; } dd { margin: 0; overflow-wrap: anywhere; user-select: tex
 #editor-font-size { width: 75px; padding: 7px; border: 1px solid #d9ce94; border-radius: 5px; background: #fefcf0; }
 .hint { font-size: 12px; color: #998971; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-@media (max-width: 700px) { .sidebar { flex-basis: 210px; } .editor-header { padding: 20px; } .editor-content { padding: 20px; } .settings-container { padding: 20px; } }
-@media (max-width: 480px) { .sidebar { flex-basis: 150px; } .sidebar-header, .note-item { padding: 15px 12px; } .sidebar footer { padding: 12px; } }
+@media (max-width: 700px) { .sidebar { --sidebar-width: 210px; } .editor-header { padding: 20px; } .editor-content { padding: 20px; } .settings-container { padding: 20px; } }
+@media (max-width: 480px) { .sidebar { --sidebar-width: 150px; } .sidebar-header, .note-item { padding: 15px 12px; } .sidebar footer { padding: 12px; } }

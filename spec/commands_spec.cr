@@ -18,6 +18,8 @@ describe Memo::Commands do
         frontend.invoke("app.info").value.not_nil!["note_count"].as_i.should eq(1)
         frontend.invoke("settings.save", JSON::Any.new(22_i64)).ok?.should be_true
         frontend.invoke("settings.get").value.not_nil!["ui"]["editor_font_size_px"].as_i.should eq(22)
+        frontend.invoke("settings.save_sidebar_width", JSON::Any.new(360_i64)).ok?.should be_true
+        frontend.invoke("settings.get").value.not_nil!["ui"]["sidebar_width_px"].as_i.should eq(360)
         frontend.invoke("notes.delete", JSON::Any.new(id)).ok?.should be_true
         frontend.invoke("notes.list").value.not_nil!.as_a.should be_empty
       ensure
@@ -36,11 +38,13 @@ describe Memo::Commands do
         denied = frontend.invoke("notes.create")
         denied.ok?.should be_false
         store.count.should eq(0)
+        frontend.invoke("settings.save_sidebar_width", JSON::Any.new(360_i64)).ok?.should be_false
         app.grant(Memo::Commands::CAPABILITY)
         frontend.invoke("notes.save", JSON.parse(%({"id":"oops"}))).ok?.should be_false
         frontend.invoke("notes.delete", JSON::Any.new(999_i64)).ok?.should be_false
         frontend.invoke("settings.save", JSON::Any.new(100_i64)).ok?.should be_false
         frontend.invoke("settings.save", JSON::Any.new("22")).ok?.should be_false
+        frontend.invoke("settings.save_sidebar_width", JSON::Any.new(601_i64)).ok?.should be_false
         frontend.invoke("fs.write_text", JSON.parse(%({"path":"/tmp/no","content":"no"}))).ok?.should be_false
         frontend.invoke("unknown.command").ok?.should be_false
       ensure
