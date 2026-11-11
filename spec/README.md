@@ -5,6 +5,8 @@ first. All tests generate their own SQLite and settings files; they do not read
 or copy personal notes.
 
 See the [standard checks](../README.md#checks) for formatting, lint, and unit tests.
+Release validation tests require Python 3.11+. On Windows, run
+`pwsh -NoProfile -File spec/support/package_checks.ps1` to check packaging failures.
 
 ## Browser checks
 

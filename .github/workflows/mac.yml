@@ -1,9 +1,10 @@
 name: Build macOS Package
 
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -14,11 +15,16 @@ jobs:
 
       - uses: crystal-lang/install-crystal@v1
         with:
-          crystal: latest
+          crystal: 1.22.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
 
       - name: Test
         run: |
           shards install --frozen
+          crystal tool format --check src spec
           crystal spec
           node --test spec/*_test.js
 
@@ -27,20 +33,9 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
+          if-no-files-found: error
           name: memo-macos
           path: |
             dist/*.dmg
-            dist/*.app
 
       - run: ls -lh dist
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          name: ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          files: |
-            dist/*.dmg

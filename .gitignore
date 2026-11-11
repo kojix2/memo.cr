@@ -21,3 +21,5 @@
 *.exe
 *.dylib
 *.so
+
+__pycache__/

@@ -36,6 +36,7 @@ crystal tool format --check src spec
 ameba src spec
 crystal spec
 node --test spec/*_test.js
+python3 -m unittest discover -s spec/support -p '*_test.py'
 ```
 
 See [GUI test instructions](spec/README.md) for browser and native WebView checks
@@ -55,5 +56,9 @@ Run `package-win.ps1` after building to create a Windows installer.
 The installer provisions WebView2 Runtime if missing (internet required).
 The standalone Windows EXE requires the
 [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) to be installed separately.
+
+CI builds macOS, Debian, and Windows packages together. A `vX.Y.Z` tag must
+match `shard.yml` and AppStream metadata. Only after every build and package
+check succeeds are the files and `SHA256SUMS` uploaded to a draft and published.
 
 See [SECURITY.md](SECURITY.md) for data protection and IPC details. Licensed under MIT.

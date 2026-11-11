@@ -1,0 +1,85 @@
+name: Build and release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test release validation
+        run: python3 -m unittest discover -s spec/support -p '*_test.py'
+      - name: Check version and tag
+        id: version
+        run: |
+          version="$(python3 scripts/check-release.py)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Check shell syntax
+        run: |
+          for script in build-*.sh scripts/*.sh spec/support/*.sh; do
+            bash -n "$script"
+          done
+
+  macos:
+    needs: validate
+    uses: ./.github/workflows/mac.yml
+
+  debian:
+    needs: validate
+    uses: ./.github/workflows/deb.yml
+
+  windows:
+    needs: validate
+    uses: ./.github/workflows/mingw.yml
+
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [validate, macos, debian, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: memo-*
+          merge-multiple: true
+          path: dist
+      - name: Require all release packages and generate checksums
+        run: python3 scripts/check-release.py --artifacts dist
+      - name: Refuse to overwrite an already published release
+        run: |
+          if draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$draft" != true ]; then
+              echo "Release $RELEASE_TAG is already published" >&2
+              exit 1
+            fi
+          fi
+      - name: Stage complete release as a draft
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: |
+            dist/*.dmg
+            dist/*.deb
+            dist/*ucrt64*.exe
+            dist/SHA256SUMS
+      - name: Publish only after every upload succeeds
+        run: gh release edit "$RELEASE_TAG" --draft=false
