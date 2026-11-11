@@ -89,6 +89,8 @@ app.primary_window.not_nil!.init(<<-'JS')
       await wait(() => window.innerWidth === 1000 && width() === 360);
       await ipc.invoke('smoke.menu', 'new-note');
       await wait(() => !$('editor').hidden && !$('new-note').disabled);
+      $('note-body').focus();
+      if (getComputedStyle($('note-body')).outlineStyle !== 'none') throw new Error('Editor still has a focus frame');
       edit('note-title', '<script>日本語😀</script>');
       edit('note-body', 'First note\nquotes & < > 😀');
       $('new-note').click();

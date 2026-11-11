@@ -7,6 +7,7 @@ button { border: 1px solid #d9ce94; border-radius: 6px; padding: 8px 14px; backg
 button:hover { background: #eee2a0; }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #a5813e; outline-offset: 2px; }
+#note-title:focus, #note-body:focus { outline: none; }
 .sidebar { flex: 0 0 var(--sidebar-width, 280px); min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .sidebar-resizer { flex: 0 0 6px; position: relative; cursor: col-resize; touch-action: none; }
 .sidebar-resizer::before { content: ""; position: absolute; inset: 0 auto 0 2px; width: 1px; background: #e6ddb3; }
