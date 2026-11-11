@@ -34,10 +34,19 @@ jobs:
         shell: pwsh
         run: ./spec/support/package_checks.ps1
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test editor and sidebar
+        shell: msys2 {0}
+        run: node --test spec/*_test.js
+
       - name: Build (UCRT64) via script
         shell: msys2 {0}
         env:
           WV2_VER: 1.0.1150.38
+          MEMO_RUN_TESTS: 1
         run: |
           bash build-mingw.sh
 

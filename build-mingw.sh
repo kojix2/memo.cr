@@ -29,5 +29,10 @@ shards install --frozen --without-development
 LINKDIR="$(pwd)/lib/webview/ext"; command -v cygpath >/dev/null 2>&1 && LINKDIR="$(cygpath -m "$LINKDIR")"
 
 # Build
+link_flags="-L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
+if [[ "${MEMO_RUN_TESTS:-0}" == 1 ]]; then
+    crystal tool format --check src spec
+    crystal spec --link-flags="$link_flags"
+fi
 shards build --release --no-debug --static \
-  --link-flags="-Wl,--subsystem,windows -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
+  --link-flags="-Wl,--subsystem,windows $link_flags"
