@@ -23,7 +23,8 @@ bin/memo
 | Cmd/Ctrl+, | Settings |
 
 Use `bin/memo --debug` for developer tools. `MEMO_DATABASE_URL` overrides the
-notes database. Existing SQLite and `settings.json` formats remain compatible
+notes database; the older `DATABASE_URL` is still accepted as a fallback.
+Existing SQLite and `settings.json` formats remain compatible
 when replacing or reinstalling the app.
 
 ## Checks

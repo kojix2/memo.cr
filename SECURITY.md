@@ -10,8 +10,9 @@ closing. Save failures keep the window open for retry. Forced termination or
 power loss can still lose edits that have not reached SQLite.
 
 Settings use CrystKit's scoped FileSystem API and retain the existing
-`settings.json` format. Runtime `MEMO_DATABASE_URL` overrides the legacy
-compile-time value. Leave this variable unset when compiling public packages.
+`settings.json` format. Runtime `MEMO_DATABASE_URL` takes priority over legacy
+`DATABASE_URL`, then the compile-time `MEMO_DATABASE_URL` value. Leave
+`MEMO_DATABASE_URL` unset when compiling public packages.
 Memo does not log note contents or database URLs.
 
 ## Frontend boundary

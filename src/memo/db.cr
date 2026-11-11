@@ -29,6 +29,10 @@ module Memo
         return "runtime_env"
       end
 
+      if present?(ENV["DATABASE_URL"]?)
+        return "legacy_runtime_env"
+      end
+
       if present?(build_time_db_url)
         return "build_env"
       end
@@ -40,6 +44,13 @@ module Memo
       if env = ENV["MEMO_DATABASE_URL"]?
         env = env.strip
         return env unless env.empty?
+      end
+
+      # Versions through 0.0.13 used DATABASE_URL. Keep existing installations
+      # on their configured SQLite file unless the Memo-specific override wins.
+      if legacy = ENV["DATABASE_URL"]?
+        legacy = legacy.strip
+        return legacy unless legacy.empty?
       end
 
       if compiled = build_time_db_url
