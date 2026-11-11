@@ -8,7 +8,7 @@ require "./dialog_provider"
 
 root = File.join(Dir.tempdir, "memo-native-smoke-#{Random::Secure.hex(8)}")
 Dir.mkdir_p(root)
-ENV["MEMO_DATABASE_URL"] = "sqlite3://#{root}/memo.db"
+ENV["MEMO_DATABASE_URL"] = Memo::DBX.sqlite_url(File.join(root, "memo.db"))
 result = "No result received from the WebView"
 export_path = File.join(root, "export.json")
 settings = Memo::Settings.new(File.join(root, "settings.json"))

@@ -1,5 +1,6 @@
 require "db"
 require "sqlite3"
+require "uri"
 require "crystkit/features/system_info"
 
 module Memo
@@ -73,20 +74,15 @@ module Memo
       !value.strip.empty?
     end
 
-    private def self.default_db_url : String
-      # Build a cross-platform, URI-safe sqlite3 URL.
-      # Crystal's URI expects absolute file paths as: sqlite3:///path/to/file
-      # On Windows, also convert backslashes to forward slashes (e.g., C:/Users/...)
-      path = db_path
-      {% if flag?(:windows) %}
-        path = path.gsub("\\", "/")
-      {% end %}
+    def self.sqlite_url(path : String) : String
+      # The SQLite driver form-decodes hostname + path. Encode the whole
+      # filename so Windows drive letters, spaces, + and % round-trip safely.
+      "sqlite3:#{URI.encode_www_form(path)}"
+    end
 
-      # Ensure we have exactly three slashes after the scheme by removing leading slashes from the path
-      # and then prefixing with sqlite3///
-      path = path.sub(/^\/+/, "")
+    private def self.default_db_url : String
       # Add busy_timeout to reduce SQLITE_BUSY errors if multiple connections overlap.
-      "sqlite3:///#{path}?journal_mode=wal&synchronous=normal&encoding=utf8&busy_timeout=5000"
+      "#{sqlite_url(db_path)}?journal_mode=wal&synchronous=normal&encoding=utf8&busy_timeout=5000"
     end
 
     def self.db : DB::Database

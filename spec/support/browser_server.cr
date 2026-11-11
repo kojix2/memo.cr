@@ -13,7 +13,7 @@ unless root.starts_with?(File.expand_path(Dir.tempdir) + "/memo-browser-") || ro
   abort "The fixture must be a memo-browser-* directory under the OS temp directory"
 end
 Dir.mkdir_p(root)
-ENV["MEMO_DATABASE_URL"] = "sqlite3://#{root}/memo.db"
+ENV["MEMO_DATABASE_URL"] = Memo::DBX.sqlite_url(File.join(root, "memo.db"))
 Memo::DBX.setup
 store = Memo::Store.new(Memo::DBX.db)
 settings = Memo::Settings.new(File.join(root, "settings.json"))

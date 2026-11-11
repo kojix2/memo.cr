@@ -11,7 +11,7 @@ def with_store(&)
   Dir.mkdir_p(root)
   previous = ENV["MEMO_DATABASE_URL"]?
   Memo::DBX.close
-  ENV["MEMO_DATABASE_URL"] = "sqlite3://#{root}/memo.db"
+  ENV["MEMO_DATABASE_URL"] = Memo::DBX.sqlite_url(File.join(root, "memo.db"))
   Memo::DBX.setup
   begin
     yield Memo::Store.new(Memo::DBX.db), root

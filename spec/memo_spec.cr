@@ -11,6 +11,23 @@ describe Memo do
 end
 
 describe Memo::DBX do
+  it "round-trips Unix and Windows database filenames without treating + or % as URL syntax" do
+    ["/tmp/Memo notes+100%/メモ.db", "C:\\Users\\A B+100%\\メモ.db"].each do |path|
+      url = Memo::DBX.sqlite_url(path)
+      SQLite3::Connection.filename(URI.parse(url)).should eq(path)
+    end
+  end
+
+  it "opens a database whose filename contains spaces, plus signs, percent signs and Unicode" do
+    with_store do |_, root|
+      path = File.join(root, "notes +100% 日本語.db")
+      DB.open(Memo::DBX.sqlite_url(path)) do |database|
+        database.exec("create table compatibility (id integer)")
+      end
+      File.file?(path).should be_true
+    end
+  end
+
   it "reopens the legacy DATABASE_URL and gives MEMO_DATABASE_URL precedence" do
     previous_legacy_url = ENV["DATABASE_URL"]?
     begin
@@ -26,7 +43,7 @@ describe Memo::DBX do
         Memo::DBX.setup
         Memo::Store.new(Memo::DBX.db).find(note.id).title.should eq(note.title)
 
-        ENV["MEMO_DATABASE_URL"] = "sqlite3://#{root}/override.db"
+        ENV["MEMO_DATABASE_URL"] = Memo::DBX.sqlite_url(File.join(root, "override.db"))
         Memo::DBX.db_url_source.should eq("runtime_env")
         Memo::DBX.db_url.should eq(ENV["MEMO_DATABASE_URL"])
       end
