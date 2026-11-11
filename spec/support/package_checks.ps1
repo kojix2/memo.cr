@@ -29,3 +29,6 @@ try {
     Remove-Item -LiteralPath $root -Recurse -Force
 }
 Write-Host 'Package checks passed: failed compiler exit, missing/empty artifacts, and successful output'
+# Expected native failures can leave LASTEXITCODE nonzero. GitHub's pwsh
+# wrapper propagates it, so reset it only after all assertions have passed.
+exit 0
