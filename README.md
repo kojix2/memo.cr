@@ -5,7 +5,7 @@
 
 A local notes app built with [Crystal](https://crystal-lang.org),
 [CrystKit](https://github.com/naqvis/crystkit), and SQLite.
-Includes autosave, a resizable sidebar, JSON export, and adjustable font size.
+Includes autosave, title and body search, a resizable sidebar, JSON export, and adjustable font size.
 
 ## Build and run
 
@@ -24,6 +24,10 @@ bin/memo
 | Cmd/Ctrl+N | New note |
 | Cmd/Ctrl+S | Save |
 | Cmd/Ctrl+, | Settings |
+
+Use the sidebar search to filter titles and full note bodies by a case-insensitive
+substring. Clear the search field or press Escape in it to show all notes.
+Searching keeps the current editor open and includes unsaved edits.
 
 Use `bin/memo --debug` for developer tools. `MEMO_DATABASE_URL` overrides the
 notes database; the older `DATABASE_URL` is still accepted as a fallback.

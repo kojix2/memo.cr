@@ -23,7 +23,7 @@ NODE_PATH=/tmp/memo-playwright/node_modules bash spec/support/browser_check.sh
 ```
 
 The suite drives the bundled frontend through CrystKit's JS client and command
-router. It checks editing, autosave and failure recovery, IME composition,
+router. It checks editing, title/body search, autosave and failure recovery, IME composition,
 settings, export, deletion, sidebar resizing, narrow layouts, and persistence
 after replacing the executable and reopening the same fixture in a new process.
 
@@ -43,7 +43,8 @@ Requires a graphical desktop session:
 crystal run spec/support/native_smoke.cr
 ```
 
-This covers the native WebView, menu dispatch, typed IPC, editing, settings,
-export, and native close, including save failures. Both GUI suites use
+This covers the native WebView, menu dispatch, typed IPC, editing, title/body
+search with unsaved edits and failed saves, settings, export, and native close,
+including save failures. Both GUI suites use
 deterministic responses at the native dialog boundary; they do not automate OS
 dialog windows.

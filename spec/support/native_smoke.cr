@@ -26,6 +26,7 @@ Memo::DBX.db.exec <<-SQL
 app.command("smoke.confirm_delete", Bool) { |confirmed| dialogs.confirmed = confirmed }
 app.command("smoke.confirm_count") { dialogs.confirm_count }
 app.command("smoke.result", String) { |message| result = message }
+app.command("smoke.check", String) { |message| puts "PASS #{message}" }
 app.command("smoke.quit") { app.quit; true }
 app.command("smoke.native_close") do
   window.native.handle_close_request
@@ -56,6 +57,10 @@ window.init(<<-'JS')
     const edit = (id, value) => {
       $(id).value = value;
       $(id).dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const check = async (name, passed) => {
+      if (!passed) throw new Error(name);
+      await ipc.invoke('smoke.check', name);
     };
     try {
       await wait(() => !$('new-note').disabled);
@@ -103,6 +108,51 @@ window.init(<<-'JS')
       if (!first || first.title !== '<script>日本語😀</script>') throw new Error('Navigation lost edits');
       document.querySelectorAll('.note-item')[1].click();
       await wait(() => $('note-title').value === first.title && !$('new-note').disabled);
+      const search = $('search-notes');
+      const count = () => document.querySelectorAll('.note-item').length;
+      const searchableBody = '先頭の文章'.repeat(30) + '\n検索する本文 日本語😀 MixedCASE [100%]';
+      edit('note-body', searchableBody);
+      edit('search-notes', '本文 日本語😀');
+      await check('Native search finds unsaved Japanese and emoji beyond the preview', count() === 1 && $('note-count').textContent === '1 of 2 notes');
+      edit('search-notes', 'mixedcase');
+      await check('Native search ignores letter case', count() === 1);
+      edit('search-notes', '[100%]');
+      await check('Native search treats punctuation literally', count() === 1);
+      edit('search-notes', '<script>');
+      await check('Native title search renders text safely', count() === 1 && !document.querySelector('.note-item script'));
+      edit('search-notes', '見つからない検索語');
+      await check('Native empty results preserve the editor', count() === 0 && document.querySelector('.list-empty').textContent === 'No matching notes' && $('note-body').value === searchableBody && !$('editor').hidden);
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true }));
+      await check('Native Escape preserves the search during IME composition', search.value === '見つからない検索語');
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await check('Native Escape restores all notes', search.value === '' && count() === 2);
+      edit('note-body', 'Simulated failing save');
+      edit('search-notes', 'simulated');
+      $('save-note').click();
+      await wait(() => !$('message').hidden && $('message').textContent.includes('Simulated database write failure') && !$('new-note').disabled);
+      await check('Native search includes edits after a failed save', count() === 1 && $('note-body').value === 'Simulated failing save');
+      const other = (await ipc.state('notes')).value.find(n => n.id !== first.id);
+      edit('search-notes', other.title);
+      document.querySelector('.note-item').click();
+      await wait(() => !$('new-note').disabled);
+      await check('Native result selection cannot discard a failed save', $('note-title').value === first.title && $('note-body').value === 'Simulated failing save' && !$('message').hidden);
+      edit('note-body', searchableBody);
+      document.querySelector('.note-item').click();
+      await wait(() => $('note-title').value === other.title && !$('new-note').disabled);
+      await check('Native result selection saves the draft before switching', (await ipc.state('notes')).value.find(n => n.id === first.id).body === searchableBody && search.value === other.title);
+      edit('note-body', 'Another MixedCASE match');
+      edit('search-notes', 'mixedcase');
+      await check('Native search returns multiple matches including the draft', count() === 2 && $('note-count').textContent === '2 of 2 notes');
+      edit('search-notes', '日本語😀');
+      document.querySelector('.note-item').click();
+      await wait(() => $('note-title').value === first.title && !$('new-note').disabled);
+      await check('Native result selection opens the matching body', $('note-body').value === searchableBody && count() === 1);
+      $('save-note').click();
+      await wait(() => !$('save-note').disabled);
+      await check('Native save preserves the active search', search.value === '日本語😀' && count() === 1);
+      edit('search-notes', '   ');
+      await check('Native whitespace search shows all notes', count() === 2);
+      edit('search-notes', '');
       await ipc.invoke('smoke.menu', 'settings…');
       await wait(() => !$('settings-page').hidden && !$('back-to-notes').disabled);
       $('editor-font-size').value = '23';
@@ -159,7 +209,7 @@ begin
   raise "Settings did not persist" unless size == 23
   restored_width = Memo::Settings.new(File.join(root, "settings.json")).sidebar_width_px
   raise "Sidebar width did not persist" unless restored_width == 360
-  puts "Native smoke passed: sidebar resize without capture and persistence, native menus, reactive settings, IPC, Unicode, navigation saves, export, confirmed and cancelled delete, failed close recovery, and close flush"
+  puts "Native smoke passed: title/body search with unsaved edits and failed saves, sidebar resize without capture and persistence, native menus, reactive settings, IPC, Unicode, navigation saves, export, confirmed and cancelled delete, failed close recovery, and close flush"
 ensure
   Memo::DBX.close
   FileUtils.rm_rf(root)

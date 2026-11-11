@@ -34,6 +34,7 @@
   function clearError() { $('message').hidden = true; }
   function updateButtons() {
     $('new-note').disabled = $('open-settings').disabled = busy || closing || !loaded;
+    $('search-notes').disabled = closing || !loaded;
     $('save-note').disabled = $('delete-note').disabled = busy || !editor.note;
     document.querySelectorAll('.note-item').forEach(button => { button.disabled = busy; });
     $('back-to-notes').disabled = busy;
@@ -53,9 +54,15 @@
     finally { busy = false; updateButtons(); }
   }
   function renderList() {
+    if (!notes) return;
     const scrollTop = $('notes-list').scrollTop;
     const fragment = document.createDocumentFragment();
-    for (const note of notes.value) {
+    const query = $('search-notes').value.trim().toLowerCase();
+    // Include the editor buffer so searching never requires a successful save.
+    const visible = notes.value.map(note => editor.note?.id === note.id
+      ? { ...note, title: editor.note.title, body: editor.note.body } : note)
+      .filter(note => !query || note.title.toLowerCase().includes(query) || note.body.toLowerCase().includes(query));
+    for (const note of visible) {
       const button = document.createElement('button');
       const active = editor.note?.id === note.id;
       button.className = 'note-item' + (active ? ' active' : '');
@@ -77,16 +84,27 @@
       }));
       fragment.appendChild(button);
     }
-    if (!notes.value.length) {
+    if (!visible.length) {
       const empty = document.createElement('p');
       empty.className = 'list-empty';
-      empty.textContent = 'No notes yet';
+      empty.textContent = query ? 'No matching notes' : 'No notes yet';
       fragment.appendChild(empty);
     }
     $('notes-list').replaceChildren(fragment);
     $('notes-list').scrollTop = scrollTop;
-    $('note-count').textContent = `${notes.value.length} ${notes.value.length === 1 ? 'note' : 'notes'}`;
+    const total = notes.value.length;
+    $('note-count').textContent = `${query ? visible.length + ' of ' : ''}${total} ${total === 1 ? 'note' : 'notes'}`;
   }
+  $('search-notes').addEventListener('input', () => {
+    $('notes-list').scrollTop = 0;
+    renderList();
+  });
+  $('search-notes').addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    $('search-notes').value = '';
+    renderList();
+  });
   function showNote(note) {
     editor.select(note);
     $('empty-state').hidden = !!note;
@@ -110,6 +128,7 @@
   for (const input of [$('note-title'), $('note-body')]) {
     input.addEventListener('input', () => {
       editor.edit($('note-title').value, $('note-body').value);
+      if ($('search-notes').value.trim()) renderList();
       scheduleSave();
     });
     input.addEventListener('compositionstart', () => { composing = true; clearTimeout(timer); });
@@ -118,6 +137,7 @@
   $('new-note').addEventListener('click', () => action(async () => {
     await flush();
     const note = await invoke('notes.create');
+    $('search-notes').value = '';
     showNote(note);
     $('note-body').focus();
   }));
