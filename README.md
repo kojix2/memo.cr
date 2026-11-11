@@ -42,6 +42,25 @@ node --test spec/*_test.js
 On Linux, source `scripts/linux-env.sh` first. With a graphical session,
 `crystal run spec/support/native_smoke.cr` also tests the native UI.
 
+For browser clicks, keyboard input, screenshots, save-failure recovery, and
+compatibility after replacing the executable, use Node 22.13+ and Playwright:
+
+```sh
+crystal build spec/support/browser_server.cr -o bin/memo-browser-server
+npm install --prefix /tmp/memo-playwright --ignore-scripts playwright@1.58.2
+/tmp/memo-playwright/node_modules/.bin/playwright install chromium
+NODE_PATH=/tmp/memo-playwright/node_modules bash spec/support/browser_check.sh
+```
+
+This test uses the actual bundled frontend, CrystKit JS client, command router,
+and a generated legacy SQLite/settings fixture. Browser requests are fulfilled
+through pipes, without an HTTP server. On macOS the wrapper additionally denies
+network access and access to the normal `Application Support/Memo` directory
+using `sandbox-exec`. It uses a fresh browser profile and never copies or reads
+personal notes. Screenshots and the check report are saved in `dist/gui-check/`.
+Native menu dispatch and native close are covered by `native_smoke.cr`.
+Both suites use deterministic responses at the native dialog boundary.
+
 ## CrystKit integration
 
 Memo uses CrystKit's typed IPC and reactive state for notes and settings,

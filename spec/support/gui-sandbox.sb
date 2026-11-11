@@ -1,0 +1,6 @@
+(version 1)
+(allow default)
+; The browser uses a fresh temporary profile and a pipe transport. Neither
+; the app's normal data nor any network connection is needed for these tests.
+(deny network*)
+(deny file-read* file-write* (subpath (param "MEMO_PRIVATE_DATA")))
