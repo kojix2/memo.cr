@@ -60,7 +60,7 @@ The standalone Windows EXE requires the
 CI uses stable Crystal, Node.js LTS, and the current WebView2 SDK.
 `shard.lock` records the resolved application dependencies; update it with `shards update`.
 
-CI builds macOS, Debian, and Windows packages together. A `vX.Y.Z` tag must
+CI builds macOS, Debian (on Ubuntu 26.04), and Windows packages together. A `vX.Y.Z` tag must
 match `shard.yml` and AppStream metadata. Only after every build and package
 check succeeds are the files and `SHA256SUMS` uploaded to a draft and published.
 
