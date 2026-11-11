@@ -15,6 +15,8 @@ settings = Memo::Settings.new(File.join(root, "settings.json"))
 settings.update_sidebar_width_px(320)
 dialogs = TestDialogProvider.new(export_path)
 app = Memo::App.new(settings: settings, dialog_provider: dialogs).build
+window = app.primary_window || abort "Missing primary window"
+menu = app.menu_bar || abort "Missing application menu"
 # Fail a real database write, keeping the application's state publication path.
 Memo::DBX.db.exec <<-SQL
   create trigger smoke_save_failure before update on notes
@@ -26,20 +28,21 @@ app.command("smoke.confirm_count") { dialogs.confirm_count }
 app.command("smoke.result", String) { |message| result = message }
 app.command("smoke.quit") { app.quit; true }
 app.command("smoke.native_close") do
-  app.primary_window.not_nil!.native.handle_close_request
+  window.native.handle_close_request
 end
 app.command("smoke.resize", Int32) do |width|
-  app.primary_window.not_nil!.size(width, 700)
+  window.size(width, 700)
   true
 end
 app.command("smoke.menu", String) do |id|
-  item = app.menu_bar.not_nil!.menus.flat_map(&.items).find do |entry|
+  item = menu.menus.flat_map(&.items).find do |entry|
     entry.is_a?(CrystKit::Features::MenuItem) && entry.id == id
-  end
-  item.as(CrystKit::Features::MenuItem).action.not_nil!.call
+  end || raise "Unknown menu item: #{id}"
+  action = item.as(CrystKit::Features::MenuItem).action || raise "Menu item has no action: #{id}"
+  action.call
   true
 end
-app.primary_window.not_nil!.init(<<-'JS')
+window.init(<<-'JS')
   document.addEventListener('DOMContentLoaded', async () => {
     const ipc = window.__CRYSTKIT_IPC__;
     const $ = id => document.getElementById(id);
@@ -136,7 +139,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       await ipc.invoke('app.close');
     }
   });
-JS
+  JS
 # A watchdog bounds a broken bridge or frontend startup without user action.
 Thread.new do
   sleep 15.seconds

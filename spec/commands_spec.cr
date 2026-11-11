@@ -15,36 +15,36 @@ describe Memo::Commands do
         notes.value.as_a.should be_empty
         created = frontend.invoke("notes.create")
         created.ok?.should be_true
-        id = created.value.not_nil!["id"].as_i64
+        id = created.value.should_not(be_nil)["id"].as_i64
         notes.value.as_a.size.should eq(1)
         updated = frontend.invoke("notes.save", JSON.parse({id: id, title: "IPC メモ", body: "本文"}.to_json))
         updated.ok?.should be_true
-        updated.value.not_nil!["body"].as_s.should eq("本文")
+        updated.value.should_not(be_nil)["body"].as_s.should eq("本文")
         notes.value.as_a.first["body"].as_s.should eq("本文")
-        frontend.invoke("app.info").value.not_nil!["note_count"].as_i.should eq(1)
+        frontend.invoke("app.info").value.should_not(be_nil)["note_count"].as_i.should eq(1)
         frontend.invoke("settings.save", JSON::Any.new(22_i64)).ok?.should be_true
         settings.value["ui"]["editor_font_size_px"].as_i.should eq(22)
         frontend.invoke("settings.save_sidebar_width", JSON::Any.new(360_i64)).ok?.should be_true
         settings.value["ui"]["sidebar_width_px"].as_i.should eq(360)
-        second = frontend.invoke("notes.create").value.not_nil!
+        second = frontend.invoke("notes.create").value.should_not(be_nil)
         notes.value.as_a.size.should eq(2)
         dialogs.confirmed = false
         before_delete = notes.value.to_json
         cancelled = frontend.invoke("notes.delete", JSON::Any.new(id))
         cancelled.ok?.should be_true
-        cancelled.value.not_nil!["id"].as_i64.should eq(id)
+        cancelled.value.should_not(be_nil)["id"].as_i64.should eq(id)
         notes.value.to_json.should eq(before_delete)
         store.find(id).body.should eq("本文")
         dialogs.confirm_count.should eq(1)
         dialogs.confirmed = true
         deleted = frontend.invoke("notes.delete", JSON::Any.new(id))
         deleted.ok?.should be_true
-        deleted.value.not_nil!["id"].should eq(second["id"])
+        deleted.value.should_not(be_nil)["id"].should eq(second["id"])
         notes.value.as_a.size.should eq(1)
         snapshot = notes.value.to_json
         frontend.invoke("notes.save", JSON.parse({id: id, title: "Deleted", body: ""}.to_json)).ok?.should be_false
         notes.value.to_json.should eq(snapshot)
-        frontend.invoke("notes.delete", second["id"]).value.not_nil!.raw.should be_nil
+        frontend.invoke("notes.delete", second["id"]).value.should_not(be_nil).raw.should be_nil
         notes.value.as_a.should be_empty
         dialogs.confirm_count.should eq(3)
       ensure

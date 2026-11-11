@@ -6,7 +6,7 @@ require "./version"
 module Memo
   module Commands
     CAPABILITY = "memo:access"
-    NAMES      = %w(__crystkit.state.attach notes.create notes.save notes.delete notes.export app.info settings.save settings.save_sidebar_width app.ready app.close)
+    NAMES      = %w[__crystkit.state.attach notes.create notes.save notes.delete notes.export app.info settings.save settings.save_sidebar_width app.ready app.close]
     IPC_POLICY = CrystKit::IPCConfig.new(NAMES.to_h do |name|
       {name, CrystKit::IPCCommandOverride.new(capability: CAPABILITY)}
     end)

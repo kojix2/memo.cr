@@ -40,7 +40,7 @@ Memo::DBX.db.exec <<-SQL
   SQL
 
 # Use the framework's complete JS client, replacing only the native transport.
-transport = <<-'JS'
+transport = <<-JS
   window.__crystal_ipc_invoke = async raw => {
     const response = await fetch('/__ipc', { method: 'POST', body: raw });
     const data = await response.json();
@@ -48,7 +48,7 @@ transport = <<-'JS'
     return data.envelope;
   };
   window.__crystal_ipc_invoke_sync = window.__crystal_ipc_invoke;
-JS
+  JS
 html = ECR.render("views/app.ecr")
 html = html.sub("connect-src 'none'", "connect-src 'self'")
 html = html.sub("<body>", "<body><script>#{transport}\n#{CrystKit::IPC::IPC_JS_CLIENT}</script>")

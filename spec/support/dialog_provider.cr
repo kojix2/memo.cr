@@ -2,7 +2,7 @@ require "crystkit"
 
 # Deterministic responses for CrystKit's native dialog boundary.
 class TestDialogProvider < CrystKit::Features::DialogProvider
-  property confirmed = true
+  property? confirmed = true
   getter confirm_count = 0
 
   def initialize(@save_path : String? = nil)
@@ -30,6 +30,6 @@ class TestDialogProvider < CrystKit::Features::DialogProvider
 
   def confirm(title : String, message : String) : Bool
     @confirm_count += 1
-    confirmed
+    confirmed?
   end
 end

@@ -94,9 +94,9 @@ module Memo
         raise ArgumentError.new("editor_font_size_px must be between #{MIN_EDITOR_FONT_SIZE_PX} and #{MAX_EDITOR_FONT_SIZE_PX}")
       end
 
-      update_ui do |ui|
-        ui.editor_font_size_px = value
-        ui
+      update_ui do |preferences|
+        preferences.editor_font_size_px = value
+        preferences
       end
     end
 
@@ -105,9 +105,9 @@ module Memo
         raise ArgumentError.new("sidebar_width_px must be between #{MIN_SIDEBAR_WIDTH_PX} and #{MAX_SIDEBAR_WIDTH_PX}")
       end
 
-      update_ui do |ui|
-        ui.sidebar_width_px = value
-        ui
+      update_ui do |preferences|
+        preferences.sidebar_width_px = value
+        preferences
       end
     end
 
