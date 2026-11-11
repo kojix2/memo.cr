@@ -29,7 +29,11 @@ ICON_NAME="app_icon"
 ICON_PNG="resources/$ICON_NAME.png"
 ICON_ICNS="resources/$ICON_NAME.icns"
 
-ARCH="aarch64"
+case "$(uname -m)" in
+  arm64|aarch64) ARCH="aarch64" ;;
+  x86_64) ARCH="x86_64" ;;
+  *) echo "ERROR: unsupported macOS architecture" >&2; exit 1 ;;
+esac
 DMG_NAME="${APP_NAME}_${VERSION}_${ARCH}.dmg"
 VOL_NAME="$APP_NAME_CAPITALIZED"
 STAGING_DIR="dmg_stage"
