@@ -52,5 +52,8 @@ bash build-mingw.sh  # Windows (MSYS2 UCRT64)
 ```
 
 Run `package-win.ps1` after building to create a Windows installer.
+The installer provisions WebView2 Runtime if missing (internet required).
+The standalone Windows EXE requires the
+[WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) to be installed separately.
 
 See [SECURITY.md](SECURITY.md) for data protection and IPC details. Licensed under MIT.

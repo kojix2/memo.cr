@@ -35,6 +35,7 @@ $INSTALLER_BASE = "${APP_NAME}_${VERSION}_${ARCH}_setup"
 $INSTALLER_NAME = "$INSTALLER_BASE.exe"
 $ISS_FILE = "$APP_NAME.iss"
 $OUTPUT_DIR = "Output"
+$BOOTSTRAPPER = ".shards/MicrosoftEdgeWebview2Setup.exe"
 
 # Use Inno Setup compiler from configuration
 $ISCC = $INNO_SETUP_PATH
@@ -57,6 +58,15 @@ if (Test-Path $DIST_DIR) { Remove-Item $DIST_DIR -Recurse -Force }
 if (Test-Path $OUTPUT_DIR) { Remove-Item $OUTPUT_DIR -Recurse -Force }
 New-Item -ItemType Directory -Path $DIST_DIR | Out-Null
 New-Item -ItemType Directory -Path $OUTPUT_DIR | Out-Null
+
+# Bundle Microsoft's signed Evergreen bootstrapper for machines without WebView2.
+New-Item -ItemType Directory -Path ".shards" -Force | Out-Null
+Invoke-WebRequest -UseBasicParsing -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile $BOOTSTRAPPER
+Assert-PackageFile $BOOTSTRAPPER
+$signature = Get-AuthenticodeSignature $BOOTSTRAPPER
+if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation(?:,|$)') {
+    throw "WebView2 bootstrapper does not have a valid Microsoft signature"
+}
 
 # Generate .ico from .png
 if (Test-Path "resources\app_icon.png") {
@@ -132,6 +142,7 @@ UninstallDisplayIcon={app}\app_icon.ico
 Source: "$EXECUTABLE_PATH"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: isreadme ignoreversion
 Source: "resources\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "$BOOTSTRAPPER"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\$APP_NAME_CAPITALIZED"; Filename: "{app}\$APP_NAME.exe"; IconFilename: "{app}\app_icon.ico"
@@ -140,6 +151,42 @@ Name: "{group}\Uninstall $APP_NAME_CAPITALIZED"; Filename: "{uninstallexe}"
 [Run]
 Filename: "{app}\$APP_NAME.exe"; Description: "Launch $APP_NAME_CAPITALIZED"; Flags: nowait postinstall skipifsilent
 
+[Code]
+function RuntimeVersionPresent(RootKey: Integer): Boolean;
+var
+  Version: String;
+begin
+  Result := RegQueryStringValue(RootKey,
+    'Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', Version);
+  if Result then
+    Result := (Version <> '') and (Version <> '0.0.0.0');
+end;
+
+function WebView2Installed(): Boolean;
+begin
+  Result := RuntimeVersionPresent(HKLM32) or RuntimeVersionPresent(HKCU32);
+  if IsWin64 then
+    Result := Result or RuntimeVersionPresent(HKLM64) or RuntimeVersionPresent(HKCU64);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Result := '';
+  if WebView2Installed() then
+    Exit;
+  ExtractTemporaryFile('MicrosoftEdgeWebview2Setup.exe');
+  if not Exec(ExpandConstant('{tmp}\MicrosoftEdgeWebview2Setup.exe'), '/silent /install', '',
+    SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Result := 'Could not start the Microsoft WebView2 Runtime installer.'
+  else if (ResultCode <> 0) and (ResultCode <> 3010) then
+    Result := 'Microsoft WebView2 Runtime installation failed (exit code ' + IntToStr(ResultCode) + ').'
+  else if not WebView2Installed() then
+    Result := 'Install Microsoft WebView2 Runtime and run Memo Setup again.';
+  if ResultCode = 3010 then
+    NeedsRestart := True;
+end;
 "@
 
 $issContent | Out-File -FilePath $ISS_FILE -Encoding UTF8
