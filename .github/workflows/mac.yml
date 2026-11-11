@@ -20,7 +20,7 @@ jobs:
         run: |
           shards install --frozen
           crystal spec
-          node --test spec/editor_test.js
+          node --test spec/*_test.js
 
       - run: bash build-mac.sh
 

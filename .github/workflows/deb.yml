@@ -36,7 +36,7 @@ jobs:
           shards install --frozen
           source scripts/linux-env.sh
           crystal spec
-          node --test spec/editor_test.js
+          node --test spec/*_test.js
 
       - name: Build Debian package
         run: |

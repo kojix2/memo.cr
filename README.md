@@ -36,7 +36,7 @@ Run `package-win.ps1` after building to create a Windows installer.
 
 ```sh
 crystal spec
-node --test spec/editor_test.js
+node --test spec/*_test.js
 ```
 
 On Linux, source `scripts/linux-env.sh` first. With a graphical session,

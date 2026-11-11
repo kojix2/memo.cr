@@ -53,16 +53,15 @@ app.primary_window.not_nil!.init(<<-'JS')
       const splitter = $('sidebar-resizer');
       const width = () => Math.round(sidebar.getBoundingClientRect().width);
       if (width() !== 320) throw new Error('Saved sidebar width was not restored');
-      // Synthetic events cannot acquire native pointer capture. Exercise the
-      // drag handlers with capture stubbed, then restore the native method.
+      // Capture rejection must not prevent document-level drag tracking.
       const capture = splitter.setPointerCapture;
-      splitter.setPointerCapture = () => {};
+      splitter.setPointerCapture = () => { throw new DOMException('Capture unavailable', 'NotFoundError'); };
       const drag = delta => {
         const start = sidebar.getBoundingClientRect().right;
-        const pointer = { pointerId: 1, isPrimary: true, button: 0, bubbles: true };
+        const pointer = { pointerId: 1, isPrimary: true, button: 0, buttons: 1, bubbles: true };
         splitter.dispatchEvent(new PointerEvent('pointerdown', { ...pointer, clientX: start }));
-        splitter.dispatchEvent(new PointerEvent('pointermove', { ...pointer, clientX: start + delta }));
-        splitter.dispatchEvent(new PointerEvent('pointerup', { ...pointer, clientX: start + delta }));
+        document.dispatchEvent(new PointerEvent('pointermove', { ...pointer, clientX: start + delta }));
+        document.dispatchEvent(new PointerEvent('pointerup', { ...pointer, clientX: start + delta }));
       };
       drag(80);
       if (width() !== 400) throw new Error('Sidebar drag did not resize');
