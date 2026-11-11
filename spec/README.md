@@ -7,6 +7,7 @@ or copy personal notes.
 See the [standard checks](../README.md#checks) for formatting, lint, and unit tests.
 Release validation tests require Python 3.11+. On Windows, run
 `pwsh -NoProfile -File spec/support/package_checks.ps1` to check packaging failures.
+`bash spec/support/flatpak_runtime_test.sh` checks runtime dependency rejection.
 
 ## Browser checks
 

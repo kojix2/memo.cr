@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Load configuration from .env
 set -a
@@ -48,12 +48,8 @@ if ! flatpak remotes | awk '{print $1}' | grep -q "^flathub$"; then
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 fi
 
-if ! flatpak list --runtime --columns=application,branch | grep -Eq "^org.gnome.Platform\s+${RUNTIME_VERSION}$"; then
-    echo "Installing GNOME runtime ${RUNTIME_VERSION}..."
-    flatpak install -y flathub org.gnome.Platform//${RUNTIME_VERSION} org.gnome.Sdk//${RUNTIME_VERSION}
-fi
-
-flatpak-builder --force-clean --repo=repo build-dir "$MANIFEST"
+flatpak-builder --install-deps-from=flathub --force-clean --repo=repo build-dir "$MANIFEST"
+bash scripts/check-flatpak-runtime.sh build-dir
 flatpak build-bundle repo "$DIST_DIR/${APP_NAME}_${VERSION}.flatpak" "$APP_ID"
 
 echo "Created: $DIST_DIR/${APP_NAME}_${VERSION}.flatpak"

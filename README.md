@@ -48,7 +48,7 @@ using isolated test data.
 ./build-mac.sh       # macOS app and DMG
 ./build-deb.sh       # Debian/Ubuntu (fpm)
 ./build-rpm.sh       # Fedora/openSUSE (fpm)
-./build-flatpak.sh   # Flatpak (flatpak-builder)
+./build-flatpak.sh   # Optional Flatpak (flatpak-builder; runtime checks required)
 bash build-mingw.sh  # Windows (MSYS2 UCRT64)
 ```
 

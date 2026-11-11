@@ -31,6 +31,8 @@ jobs:
           for script in build-*.sh scripts/*.sh spec/support/*.sh; do
             bash -n "$script"
           done
+      - name: Test Flatpak dependency failures
+        run: bash spec/support/flatpak_runtime_test.sh
 
   macos:
     needs: validate
