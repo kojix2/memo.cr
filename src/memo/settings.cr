@@ -1,5 +1,5 @@
 require "json"
-require "random/secure"
+require "crystkit"
 
 require "./db"
 
@@ -57,10 +57,16 @@ module Memo
 
     @mutex = Mutex.new
     @data : Data?
+    @files : CrystKit::Features::FileSystem
 
     getter path : String
 
     def initialize(@path : String = File.join(File.dirname(DBX.db_path), "settings.json"))
+      security = CrystKit::Security::Context.new
+      security.capabilities.grant("fs:read")
+      security.capabilities.grant("fs:write")
+      security.scopes.persist(Path[path].expand(home: true).parent, CrystKit::Security::Permission::Write)
+      @files = CrystKit::Features::FileSystem.new(security)
     end
 
     def load : Data
@@ -110,69 +116,17 @@ module Memo
         updated = (@data || load_from_disk)
         updated.ui = block.call(updated.ui)
         updated = updated.normalized
-        write_to_disk(updated)
+        @files.create_dir(Path[path].expand(home: true).parent, recursive: true)
+        @files.write_text(Path[path], updated.to_json)
         @data = updated
       end
     end
 
     private def load_from_disk : Data
-      file_path = path
-      begin
-        if File.exists?(file_path)
-          raw = File.read(file_path)
-          data = Data.from_json(raw)
-          return data.normalized
-        end
-      rescue
-        quarantine_corrupt_file(file_path)
-      end
-
-      Data.new.normalized
-    end
-
-    private def write_to_disk(data : Data)
-      file_path = path
-      dir = File.dirname(file_path)
-      Dir.mkdir_p(dir) unless Dir.exists?(dir)
-
-      bak_path = file_path + ".bak"
-
-      tmp_path = file_path + ".tmp.#{Random::Secure.hex(8)}"
-      File.write(tmp_path, data.to_json)
-
-      if File.exists?(file_path)
-        begin
-          File.delete(bak_path) if File.exists?(bak_path)
-        rescue
-        end
-        begin
-          File.rename(file_path, bak_path)
-        rescue
-          # If renaming fails, fall back to overwriting (best effort).
-        end
-      end
-
-      File.rename(tmp_path, file_path)
-    ensure
-      begin
-        if tmp_path
-          File.delete(tmp_path) if File.exists?(tmp_path)
-        end
-      rescue
-      end
-    end
-
-    private def quarantine_corrupt_file(file_path : String)
-      return unless File.exists?(file_path)
-
-      ts = Time.local.to_s("%Y%m%d%H%M%S")
-      suffix = Random::Secure.hex(4)
-      quarantined = file_path + ".corrupt.#{ts}.#{suffix}"
-      begin
-        File.rename(file_path, quarantined)
-      rescue
-        # If we cannot rename it, leave it as-is and fall back to defaults.
-      end
+      return Data.new unless @files.exists?(Path[path])
+      Data.from_json(@files.read_text(Path[path])).normalized
+    rescue JSON::ParseException | JSON::SerializableError
+      Data.new
     end
   end
 end

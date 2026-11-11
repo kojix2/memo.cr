@@ -90,8 +90,11 @@ describe Memo::Commands do
     with_store do |store, root|
       # A file in place of the parent directory forces a real write failure.
       blocked = File.join(root, "blocked")
-      File.write(blocked, "not a directory")
+      Dir.mkdir(blocked)
       settings = Memo::Settings.new(File.join(blocked, "settings.json"))
+      settings.load
+      Dir.delete(blocked)
+      File.write(blocked, "not a directory")
       app = CrystKit::App.new(CrystKit::AppConfig.new(storage_dir: Path[root], ipc: Memo::Commands::IPC_POLICY))
       app.grant(Memo::Commands::CAPABILITY)
       Memo::Commands.register(app, store, settings,

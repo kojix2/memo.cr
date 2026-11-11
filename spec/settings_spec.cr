@@ -10,8 +10,12 @@ describe Memo::Settings do
       settings.sidebar_width_px.should eq(280)
       settings.update_editor_font_size_px(24)
       Memo::Settings.new(path).editor_font_size_px.should eq(24)
-      Memo::Settings::Data.from_json(File.read(path + ".bak")).ui.editor_font_size_px.should eq(20)
-      Dir.glob(path + ".tmp.*").should be_empty
+      # Reopening the same file models replacing the app without its data.
+      json = JSON.parse(File.read(path))
+      json["version"].as_i.should eq(1)
+      json["ui"]["editor_font_size_px"].as_i.should eq(24)
+      json["ui"]["sidebar_width_px"].as_i.should eq(280)
+      File.exists?(File.join(root, "store_settings.json")).should be_false
     end
   end
 
@@ -43,12 +47,12 @@ describe Memo::Settings do
     end
   end
 
-  it "quarantines corrupt JSON and normalizes unsupported values" do
+  it "uses defaults for corrupt JSON and normalizes unsupported values" do
     with_store do |_, root|
       path = File.join(root, "settings.json")
       File.write(path, "{broken")
       Memo::Settings.new(path).editor_font_size_px.should eq(16)
-      Dir.glob(path + ".corrupt.*").size.should eq(1)
+      File.read(path).should eq("{broken")
       File.write(path, %({"version":99,"ui":{"editor_font_size_px":999,"sidebar_width_px":999}}))
       data = Memo::Settings.new(path).load
       data.version.should eq(1)

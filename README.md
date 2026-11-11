@@ -54,9 +54,11 @@ an in-page splitter. It supports dragging without pointer capture, keyboard
 adjustment, and saved widths. The editor's save queue remains application logic
 so navigation and close wait for every edit to reach SQLite.
 
-Settings keep their existing JSON format, backups, corrupt-file quarantine, and
-write-error propagation. CrystKit's key-value Store uses a different format and
-logs write failures without raising them, so it cannot preserve these behaviors.
+Settings are read and written through CrystKit's scoped FileSystem feature.
+The existing `settings.json` path, version 1 JSON format, and SQLite schema are
+unchanged, so reinstalling the app keeps existing notes and preferences usable.
+Invalid JSON falls back to defaults; filesystem failures reach the UI. The old
+custom backup, temporary-file, and quarantine implementation has been removed.
 The packaging scripts also retain dependency bundling and platform-specific
 runtime dependency lists that CrystKit's current builder does not supply.
 
