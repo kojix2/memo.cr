@@ -29,7 +29,7 @@ when replacing or reinstalling the app.
 
 ## Checks
 
-Requires Ameba and Node.js in addition to the build dependencies.
+Requires Ameba, Node.js, and Python 3.11+ in addition to the build dependencies.
 
 ```sh
 crystal tool format --check src spec
