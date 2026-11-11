@@ -2,8 +2,7 @@
 
 A local notes app built with [Crystal](https://crystal-lang.org),
 [CrystKit](https://github.com/naqvis/crystkit), and SQLite.
-Supports autosave, JSON export, and adjustable editor font size.
-Existing notes and settings remain compatible.
+Includes autosave, a resizable sidebar, JSON export, and adjustable font size.
 
 ## Build and run
 
@@ -12,13 +11,34 @@ Requires Crystal 1.21+, Shards, SQLite 3, and
 
 ```sh
 shards install --frozen
-# On Linux: source scripts/linux-env.sh
+# Linux: source scripts/linux-env.sh
 shards build --release
 bin/memo
 ```
 
-Use `--debug` for developer tools, **Cmd/Ctrl+N** for a new note,
-and **Cmd/Ctrl+S** to save. `MEMO_DATABASE_URL` overrides the database location.
+| Shortcut | Action |
+| --- | --- |
+| Cmd/Ctrl+N | New note |
+| Cmd/Ctrl+S | Save |
+| Cmd/Ctrl+, | Settings |
+
+Use `bin/memo --debug` for developer tools. `MEMO_DATABASE_URL` overrides the
+notes database. Existing SQLite and `settings.json` formats remain compatible
+when replacing or reinstalling the app.
+
+## Checks
+
+Requires Ameba and Node.js in addition to the build dependencies.
+
+```sh
+crystal tool format --check src spec
+ameba src spec
+crystal spec
+node --test spec/*_test.js
+```
+
+See [GUI test instructions](spec/README.md) for browser and native WebView checks
+using isolated test data.
 
 ## Packages
 
@@ -32,53 +52,4 @@ bash build-mingw.sh  # Windows (MSYS2 UCRT64)
 
 Run `package-win.ps1` after building to create a Windows installer.
 
-## Tests
-
-```sh
-crystal spec
-node --test spec/*_test.js
-```
-
-On Linux, source `scripts/linux-env.sh` first. With a graphical session,
-`crystal run spec/support/native_smoke.cr` also tests the native UI.
-
-For browser clicks, keyboard input, screenshots, save-failure recovery, and
-compatibility after replacing the executable, use Node 22.13+ and Playwright:
-
-```sh
-crystal build spec/support/browser_server.cr -o bin/memo-browser-server
-npm install --prefix /tmp/memo-playwright --ignore-scripts playwright@1.58.2
-/tmp/memo-playwright/node_modules/.bin/playwright install chromium
-NODE_PATH=/tmp/memo-playwright/node_modules bash spec/support/browser_check.sh
-```
-
-This test uses the actual bundled frontend, CrystKit JS client, command router,
-and a generated legacy SQLite/settings fixture. Browser requests are fulfilled
-through pipes, without an HTTP server. On macOS the wrapper additionally denies
-network access and access to the normal `Application Support/Memo` directory
-using `sandbox-exec`. It uses a fresh browser profile and never copies or reads
-personal notes. Screenshots and the check report are saved in `dist/gui-check/`.
-Native menu dispatch and native close are covered by `native_smoke.cr`.
-Both suites use deterministic responses at the native dialog boundary.
-
-## CrystKit integration
-
-Memo uses CrystKit's typed IPC and reactive state for notes and settings,
-native menus and their keyboard accelerators, file and confirmation dialogs,
-scoped filesystem access for exports, application-data directories, CLI parsing,
-and window/application lifecycle events. **Cmd/Ctrl+,** opens settings.
-
-The sidebar splitter remains a DOM control because CrystKit does not provide
-an in-page splitter. It supports dragging without pointer capture, keyboard
-adjustment, and saved widths. The editor's save queue remains application logic
-so navigation and close wait for every edit to reach SQLite.
-
-Settings are read and written through CrystKit's scoped FileSystem feature.
-The existing `settings.json` path, version 1 JSON format, and SQLite schema are
-unchanged, so reinstalling the app keeps existing notes and preferences usable.
-Invalid JSON falls back to defaults; filesystem failures reach the UI. The old
-custom backup, temporary-file, and quarantine implementation has been removed.
-The packaging scripts also retain dependency bundling and platform-specific
-runtime dependency lists that CrystKit's current builder does not supply.
-
-See [SECURITY.md](SECURITY.md) for security details. Licensed under MIT.
+See [SECURITY.md](SECURITY.md) for data protection and IPC details. Licensed under MIT.
