@@ -53,7 +53,8 @@ app.primary_window.not_nil!.init(<<-'JS')
       const splitter = $('sidebar-resizer');
       const width = () => Math.round(sidebar.getBoundingClientRect().width);
       if (width() !== 320) throw new Error('Saved sidebar width was not restored');
-      // Capture rejection must not prevent document-level drag tracking.
+      // Reproduce WebViews that reject capture; movement and release happen
+      // outside the separator, as they do during a real drag.
       const capture = splitter.setPointerCapture;
       splitter.setPointerCapture = () => { throw new DOMException('Capture unavailable', 'NotFoundError'); };
       const drag = delta => {
@@ -74,7 +75,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       splitter.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
       if (width() !== 370) throw new Error('Sidebar keyboard resize failed');
       splitter.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
-      await wait(async () => (await ipc.invoke('settings.get')).ui.sidebar_width_px === 360);
+      await wait(async () => (await ipc.state('settings')).value.ui.sidebar_width_px === 360);
       await ipc.invoke('smoke.resize', 500);
       await wait(() => window.innerWidth === 500 && width() <= 254);
       await ipc.invoke('smoke.resize', 1000);
@@ -93,8 +94,13 @@ app.primary_window.not_nil!.init(<<-'JS')
       $('open-settings').click();
       await wait(() => !$('settings-page').hidden && !$('back-to-notes').disabled);
       $('editor-font-size').value = '23';
+      await ipc.invoke('settings.save_sidebar_width', 370);
+      await wait(async () => (await ipc.state('settings')).value.ui.sidebar_width_px === 370);
+      if ($('editor-font-size').value !== '23') throw new Error('Width publication overwrote font draft');
+      await ipc.invoke('settings.save_sidebar_width', 360);
       $('font-form').dispatchEvent(new Event('submit', { cancelable: true }));
       await wait(() => $('font-status').textContent === 'Saved');
+      await wait(() => getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size').trim() === '23px');
       $('export-notes').click();
       await wait(() => $('export-status').textContent.startsWith('Saved to'));
       $('back-to-notes').click();
@@ -141,7 +147,7 @@ begin
   raise "Settings did not persist" unless size == 23
   restored_width = Memo::Settings.new(File.join(root, "settings.json")).sidebar_width_px
   raise "Sidebar width did not persist" unless restored_width == 360
-  puts "Native smoke passed: sidebar resize and persistence, UI, IPC, Unicode, navigation saves, settings, export, confirmed and cancelled delete, failed close recovery, and close flush"
+  puts "Native smoke passed: sidebar resize without capture and persistence, native menus, reactive settings, IPC, Unicode, navigation saves, export, confirmed and cancelled delete, failed close recovery, and close flush"
 ensure
   Memo::DBX.close
   FileUtils.rm_rf(root)

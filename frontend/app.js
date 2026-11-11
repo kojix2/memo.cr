@@ -144,9 +144,8 @@
     event.preventDefault();
     action(async () => {
       const size = Number($('editor-font-size').value);
-      if (!Number.isInteger(size) || size < 10 || size > 32) throw new Error('Choose a font size from 10 to 32 px.');
-      const saved = await invoke('settings.save', size);
-      document.documentElement.style.setProperty('--editor-font-size', saved.editor_font_size_px + 'px');
+      if (!$('editor-font-size').checkValidity()) throw new Error('Choose a font size from 10 to 32 px.');
+      await invoke('settings.save', size);
       $('font-status').textContent = 'Saved';
     });
   });
@@ -193,16 +192,28 @@
     return;
   }
   ipc.listen('app:close-requested', requestClose);
+  let renderedFontSize;
+  function renderSettings(settings) {
+    const ui = settings.ui;
+    // Width publications must not overwrite an unfinished font-size edit.
+    if (renderedFontSize !== ui.editor_font_size_px) {
+      $('editor-font-size').value = ui.editor_font_size_px;
+      renderedFontSize = ui.editor_font_size_px;
+    }
+    $('editor-font-size').min = ui.min_editor_font_size_px;
+    $('editor-font-size').max = ui.max_editor_font_size_px;
+    document.documentElement.style.setProperty('--editor-font-size', ui.editor_font_size_px + 'px');
+  }
   (async () => {
     try {
       await invoke('app.ready');
-      const [noteState, settings] = await Promise.all([ipc.state('notes'), invoke('settings.get')]);
+      const [noteState, settings] = await Promise.all([ipc.state('notes'), ipc.state('settings')]);
       notes = noteState;
       notes.subscribe(renderList);
-      sidebarWidth = settings.ui.sidebar_width_px;
-      renderSidebarWidth();
-      $('editor-font-size').value = settings.ui.editor_font_size_px;
-      document.documentElement.style.setProperty('--editor-font-size', settings.ui.editor_font_size_px + 'px');
+      settings.subscribe(renderSettings);
+      renderSettings(settings.value);
+      sidebar.width = settings.value.ui.sidebar_width_px;
+      sidebar.render();
       loaded = true;
       showNote(notes.value[0] || null);
       updateButtons();

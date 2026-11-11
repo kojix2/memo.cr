@@ -11,6 +11,7 @@ describe Memo::Commands do
       frontend = CrystKit::Test::FakeFrontend.new(app)
       begin
         notes = frontend.state("notes")
+        settings = frontend.state("settings")
         notes.value.as_a.should be_empty
         created = frontend.invoke("notes.create")
         created.ok?.should be_true
@@ -22,9 +23,9 @@ describe Memo::Commands do
         notes.value.as_a.first["body"].as_s.should eq("本文")
         frontend.invoke("app.info").value.not_nil!["note_count"].as_i.should eq(1)
         frontend.invoke("settings.save", JSON::Any.new(22_i64)).ok?.should be_true
-        frontend.invoke("settings.get").value.not_nil!["ui"]["editor_font_size_px"].as_i.should eq(22)
+        settings.value["ui"]["editor_font_size_px"].as_i.should eq(22)
         frontend.invoke("settings.save_sidebar_width", JSON::Any.new(360_i64)).ok?.should be_true
-        frontend.invoke("settings.get").value.not_nil!["ui"]["sidebar_width_px"].as_i.should eq(360)
+        settings.value["ui"]["sidebar_width_px"].as_i.should eq(360)
         second = frontend.invoke("notes.create").value.not_nil!
         notes.value.as_a.size.should eq(2)
         dialogs.confirmed = false
@@ -71,10 +72,40 @@ describe Memo::Commands do
         frontend.invoke("notes.delete", JSON::Any.new(999_i64)).ok?.should be_false
         frontend.invoke("settings.save", JSON::Any.new(100_i64)).ok?.should be_false
         frontend.invoke("settings.save", JSON::Any.new("22")).ok?.should be_false
+        settings = frontend.state("settings")
+        before_settings = settings.value.to_json
         frontend.invoke("settings.save_sidebar_width", JSON::Any.new(601_i64)).ok?.should be_false
+        settings.value.to_json.should eq(before_settings)
         frontend.invoke("fs.write_text", JSON.parse(%({"path":"/tmp/no","content":"no"}))).ok?.should be_false
         frontend.invoke("unknown.command").ok?.should be_false
         dialogs.confirm_count.should eq(0)
+      ensure
+        frontend.detach
+        app.shutdown
+      end
+    end
+  end
+
+  it "publishes settings only after a successful disk write" do
+    with_store do |store, root|
+      # A file in place of the parent directory forces a real write failure.
+      blocked = File.join(root, "blocked")
+      File.write(blocked, "not a directory")
+      settings = Memo::Settings.new(File.join(blocked, "settings.json"))
+      app = CrystKit::App.new(CrystKit::AppConfig.new(storage_dir: Path[root], ipc: Memo::Commands::IPC_POLICY))
+      app.grant(Memo::Commands::CAPABILITY)
+      Memo::Commands.register(app, store, settings,
+        CrystKit::Features::MessageDialog.new(TestDialogProvider.new))
+      frontend = CrystKit::Test::FakeFrontend.new(app)
+      begin
+        preferences = frontend.state("settings")
+        before = preferences.value.to_json
+        frontend.invoke("settings.save", JSON::Any.new(22_i64)).ok?.should be_false
+        preferences.value.to_json.should eq(before)
+        settings.editor_font_size_px.should eq(16)
+        frontend.invoke("settings.save_sidebar_width", JSON::Any.new(360_i64)).ok?.should be_false
+        preferences.value.to_json.should eq(before)
+        settings.sidebar_width_px.should eq(280)
       ensure
         frontend.detach
         app.shutdown
