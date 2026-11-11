@@ -21,6 +21,7 @@ mkdir -p "$DIST_DIR"
 # Create temporary directory structure
 TEMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TEMP_DIR"' EXIT
+chmod 755 "$TEMP_DIR"
 mkdir -p "$TEMP_DIR/usr/bin"
 mkdir -p "$TEMP_DIR/usr/share/applications"
 mkdir -p "$TEMP_DIR/usr/share/icons/hicolor/256x256/apps"
@@ -55,26 +56,19 @@ printf 'Source: %s\n\nPackage: %s\nArchitecture: any\nDescription: Memo\n' \
     "$APP_NAME" "$APP_NAME" > "$METADATA_DIR/debian/control"
 BINARY_PATH="$TEMP_DIR/usr/bin/$APP_NAME"
 dependencies="$(cd "$METADATA_DIR" && dpkg-shlibdeps -O -e "$BINARY_PATH")"
-dependencies="${dependencies#shlibs:Depends=}"
 rm -rf "$METADATA_DIR"
-IFS=',' read -r -a runtime_dependencies <<< "$dependencies"
-FPM_ARGS=()
-for dependency in "${runtime_dependencies[@]}"; do
-    FPM_ARGS+=(--depends "${dependency# }")
-done
 
-fpm -s dir -t deb \
-    --name "$APP_NAME" \
-    --version "$VERSION" \
-    --description "$DESCRIPTION" \
-    --maintainer "$MAINTAINER" \
-    --license "$LICENSE" \
-    --url "$URL" \
-    --architecture "$ARCH" \
-    --deb-no-default-config-files \
-    "${FPM_ARGS[@]}" \
-    --package "$DIST_DIR/${APP_NAME}_${VERSION}_${ARCH}.deb" \
-    -C "$TEMP_DIR" \
-    .
+mkdir -p "$TEMP_DIR/DEBIAN"
+cat > "$TEMP_DIR/DEBIAN/control" <<EOF
+Package: $APP_NAME
+Version: $VERSION
+Architecture: $ARCH
+Maintainer: $MAINTAINER
+Depends: ${dependencies#shlibs:Depends=}
+Homepage: $URL
+License: $LICENSE
+Description: $DESCRIPTION
+EOF
+dpkg-deb --root-owner-group --build "$TEMP_DIR" "$DIST_DIR/${APP_NAME}_${VERSION}_${ARCH}.deb"
 
 echo "Created: $DIST_DIR/${APP_NAME}_${VERSION}_${ARCH}.deb"

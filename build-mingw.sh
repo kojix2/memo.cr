@@ -1,21 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build for Windows using MSYS2 UCRT64; set WV2_VER to override version
+# Build for Windows using MSYS2 UCRT64; optionally set WV2_VER to select an SDK.
 if [[ "${MSYSTEM:-}" != "UCRT64" ]]; then
     echo "error: run this script in the MSYS2 UCRT64 environment" >&2
     exit 1
 fi
-
-: "${WV2_VER:=1.0.1150.38}"
 
 # Must run from repository root
 ([ -f shards.yml ] || [ -f shard.yml ]) || { echo "error: run at repo root" >&2; exit 1; }
 
 # WebView2 headers (NuGet)
 mkdir -p _wv2
-curl -fL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${WV2_VER}" -o _wv2/webview2.nupkg
-unzip -q _wv2/webview2.nupkg "build/native/include/*.h" -d _wv2 || { echo "error: unzip WebView2" >&2; exit 1; }
+curl -fL "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2${WV2_VER:+/$WV2_VER}" -o _wv2/webview2.nupkg
+unzip -qo _wv2/webview2.nupkg "build/native/include/*.h" -d _wv2 || { echo "error: unzip WebView2" >&2; exit 1; }
 [ -f _wv2/build/native/include/WebView2.h ] || { echo "error: WebView2.h not found" >&2; exit 1; }
 
 # Env for webview postinstall (needs headers)

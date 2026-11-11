@@ -12,7 +12,6 @@ targets:
 dependencies:
   crystkit:
     github: naqvis/crystkit
-    commit: e461e6d51ef2a5ddef886f1c94a41b0433e011be
   db:
     github: crystal-lang/crystal-db
   sqlite3:

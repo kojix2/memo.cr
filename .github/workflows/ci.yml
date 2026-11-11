@@ -15,17 +15,12 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
       - name: Test release validation
         run: python3 -m unittest discover -s spec/support -p '*_test.py'
       - name: Check version and tag
-        id: version
-        run: |
-          version="$(python3 scripts/check-release.py)"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        run: python3 scripts/check-release.py
       - name: Check shell syntax
         run: |
           for script in build-*.sh scripts/*.sh spec/support/*.sh; do
@@ -36,15 +31,161 @@ jobs:
 
   macos:
     needs: validate
-    uses: ./.github/workflows/mac.yml
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: crystal-lang/install-crystal@v1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      - name: Test
+        run: |
+          shards install --frozen
+          crystal tool format --check src spec
+          crystal spec
+          node --test spec/*_test.js
+
+      - run: bash build-mac.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: memo-macos
+          path: |
+            dist/*.dmg
+
+      - run: ls -lh dist
 
   debian:
     needs: validate
-    uses: ./.github/workflows/deb.yml
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: crystal-lang/install-crystal@v1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libsqlite3-dev \
+            libssl-dev \
+            libx11-dev libxss-dev libdbus-1-dev \
+            libnotify-dev libayatana-appindicator3-dev \
+            libudev-dev libsecret-1-dev libspeechd-dev \
+            pkg-config xvfb xauth
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      - name: Test
+        run: |
+          shards install --frozen
+          source scripts/linux-env.sh
+          crystal tool format --check src spec
+          crystal spec
+          node --test spec/*_test.js
+          xvfb-run -a crystal run spec/support/native_smoke.cr
+
+      - name: Build Debian package
+        run: |
+          bash build-deb.sh
+
+      - name: Verify installed package
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          test "$(memo --version)" = "$(shards version .)"
+          dpkg-deb --info dist/*.deb
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: memo-debian
+          path: |
+            dist/*.deb
+
+      - run: ls -lh dist
 
   windows:
     needs: validate
-    uses: ./.github/workflows/mingw.yml
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            make
+            unzip
+            zip
+            curl
+            mingw-w64-ucrt-x86_64-crystal
+            mingw-w64-ucrt-x86_64-shards
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkg-config
+            mingw-w64-ucrt-x86_64-openssl
+            mingw-w64-ucrt-x86_64-sqlite3
+
+      - name: Test packaging failure paths
+        shell: pwsh
+        run: ./spec/support/package_checks.ps1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      - name: Test editor and sidebar
+        shell: pwsh
+        run: node --test spec/editor_test.js spec/sidebar_test.js
+
+      - name: Build (UCRT64) via script
+        shell: msys2 {0}
+        env:
+          MEMO_RUN_TESTS: 1
+        run: |
+          bash build-mingw.sh
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+          echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Create installer with Inno Setup
+        shell: msys2 {0}
+        env:
+          INNO_SETUP_PATH: 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File package-win.ps1
+
+      - name: Verify standalone and installed executables
+        shell: msys2 {0}
+        timeout-minutes: 5
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File spec/support/windows_package_smoke.ps1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          if-no-files-found: error
+          name: memo-windows-ucrt64
+          path: |
+            dist/*.exe
+
+      - run: ls dist
 
   release:
     if: github.event_name == 'push' && github.ref_type == 'tag'

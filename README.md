@@ -46,7 +46,7 @@ using isolated test data.
 
 ```sh
 ./build-mac.sh       # macOS app and DMG
-./build-deb.sh       # Debian/Ubuntu (fpm)
+./build-deb.sh       # Debian/Ubuntu (dpkg-dev)
 ./build-rpm.sh       # Fedora/openSUSE (fpm)
 ./build-flatpak.sh   # Optional Flatpak (flatpak-builder; runtime checks required)
 bash build-mingw.sh  # Windows (MSYS2 UCRT64)
@@ -56,6 +56,9 @@ Run `package-win.ps1` after building to create a Windows installer.
 The installer provisions WebView2 Runtime if missing (internet required).
 The standalone Windows EXE requires the
 [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) to be installed separately.
+
+CI uses stable Crystal, Node.js LTS, and the current WebView2 SDK.
+`shard.lock` records the resolved application dependencies; update it with `shards update`.
 
 CI builds macOS, Debian, and Windows packages together. A `vX.Y.Z` tag must
 match `shard.yml` and AppStream metadata. Only after every build and package
