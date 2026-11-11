@@ -15,9 +15,16 @@
     save: width => invoke('settings.save_sidebar_width', width),
     onError: showError
   });
-  const editor = new MemoEditor(invoke, (text, error = false) => {
+  let lastSaveError;
+  const editor = new MemoEditor(invoke, (text, error) => {
     $('save-status').textContent = text;
-    if (error) showError(text);
+    if (error) {
+      lastSaveError = error.message;
+      showError(error);
+    } else if (text === 'Saved' && lastSaveError) {
+      if ($('message').textContent === lastSaveError) clearError();
+      lastSaveError = null;
+    }
   });
 
   function showError(error) {

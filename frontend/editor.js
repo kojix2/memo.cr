@@ -41,7 +41,7 @@ class MemoEditor {
         await this.invoke('notes.save', { id, title, body });
         this.savedRevision = revision;
       } catch (error) {
-        this.onStatus('Save failed — ' + error.message, true);
+        this.onStatus('Save failed — ' + error.message, error);
         throw error;
       }
     }
