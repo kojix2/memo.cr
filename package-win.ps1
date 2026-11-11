@@ -1,6 +1,7 @@
 # PowerShell script for building Windows installer
 
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot/scripts/package-helpers.ps1"
 
 # Load configuration from .env
 Get-Content .env | ForEach-Object {
@@ -11,7 +12,7 @@ Get-Content .env | ForEach-Object {
     }
 }
 
-$VERSION = (& shards version .).Trim()
+$VERSION = (Invoke-CheckedNative -FilePath "shards" -Arguments @("version", ".")).Trim()
 if (-not $VERSION) {
     Write-Error "Error: failed to read version with 'shards version .'"
     exit 1
@@ -48,6 +49,7 @@ if (-not (Test-Path $EXECUTABLE_PATH)) {
     Write-Error "Error: Executable not found at '$EXECUTABLE_PATH'. Please build first with 'shards build --release'"
     exit 1
 }
+Assert-PackageFile $EXECUTABLE_PATH
 
 Write-Host "Creating installer for $APP_NAME v$VERSION..."
 
@@ -137,19 +139,22 @@ Name: "{group}\Uninstall $APP_NAME_CAPITALIZED"; Filename: "{uninstallexe}"
 
 [Run]
 Filename: "{app}\$APP_NAME.exe"; Description: "Launch $APP_NAME_CAPITALIZED"; Flags: nowait postinstall skipifsilent
+
 "@
 
 $issContent | Out-File -FilePath $ISS_FILE -Encoding UTF8
 
-& $ISCC $ISS_FILE
+Invoke-CheckedNative -FilePath $ISCC -Arguments @($ISS_FILE)
+$installerPath = Join-Path $OUTPUT_DIR $INSTALLER_NAME
+Assert-PackageFile $installerPath
 
 # Copy versioned standalone exe
 $exeOut = Join-Path $DIST_DIR ("${APP_NAME}_${VERSION}_${ARCH}.exe")
 Copy-Item $EXECUTABLE_PATH $exeOut -Force | Out-Null
 # Move versioned installer
-if (Test-Path (Join-Path $OUTPUT_DIR $INSTALLER_NAME)) {
-    Move-Item (Join-Path $OUTPUT_DIR $INSTALLER_NAME) $DIST_DIR -Force
-}
+Move-Item $installerPath $DIST_DIR -Force
+Assert-PackageFile $exeOut
+Assert-PackageFile (Join-Path $DIST_DIR $INSTALLER_NAME)
 
 Remove-Item $OUTPUT_DIR -Recurse -Force
 Remove-Item $ISS_FILE
