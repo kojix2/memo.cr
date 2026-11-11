@@ -147,6 +147,7 @@
     $('settings-page').hidden = true;
     $('notes-page').hidden = false;
   });
+  $('editor-font-size').addEventListener('input', () => { $('font-status').textContent = ''; });
   $('font-form').addEventListener('submit', event => {
     event.preventDefault();
     action(async () => {
