@@ -15,8 +15,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .sidebar-resizer:focus-visible::before { background: #a5813e; }
 .resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
 .sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid #e6ddb3; }
-h1 { font-size: 26px; margin: 0 0 22px; font-weight: 600; letter-spacing: -.8px; }
-.local-label { display: block; margin-top: 5px; font-size: 9px; letter-spacing: 2px; color: #998971; font-weight: 500; }
 .primary { width: 100%; background: #f0e68c; }
 #search-notes { display: block; width: 100%; min-width: 0; margin-top: 14px; padding: 8px; border: 1px solid #d9ce94; border-radius: 6px; background: #fefcf0; font-size: 13px; }
 .notes-list { overflow: auto; flex: 1; }
