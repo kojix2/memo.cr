@@ -11,12 +11,13 @@ requires the `memo:access` capability. Payloads are decoded into Crystal types;
 SQL parameters are bound by the backend. There is no generic SQL, filesystem,
 shell, network, or window-creation plugin exposed to JavaScript.
 
-CrystKit mirrors committed notes through reactive state. Attaching to that
+CrystKit mirrors committed notes and settings through reactive state. Attaching to that
 state requires the same `memo:access` capability as note commands.
 
 Export opens a native save dialog in the backend, which requires `dialog:save`.
-Only the path returned by that dialog is written. JavaScript cannot submit an
-arbitrary export destination.
+CrystKit's filesystem feature requires `fs:write` and an operation-local write
+scope for that selected path. JavaScript cannot submit an arbitrary export
+destination or call generic filesystem commands.
 
 The executable embeds its frontend assets. Notes and error messages are rendered
 with `textContent` or input values, rather than HTML interpolation. A Content

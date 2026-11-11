@@ -37,7 +37,7 @@ module Memo
         asset_protocol_enabled: false,
       )
       app = CrystKit::App.new(config)
-      app.grant(Commands::CAPABILITY, "dialog:save")
+      app.grant(Commands::CAPABILITY, "dialog:save", "fs:write")
       Commands.register(app, store, settings, CrystKit::Features::MessageDialog.new(@dialog_provider))
       app.on_shutdown { DBX.close }
 
@@ -51,7 +51,11 @@ module Memo
           owner: app.primary_window.try(&.window),
         ))
         if path
-          File.write(path, store.export_json)
+          # Authorize only this dialog selection for this export operation.
+          scopes = CrystKit::Security::ScopeManager.new
+          scopes.persist(path.expand(home: true), CrystKit::Security::Permission::Write)
+          files = CrystKit::Features::FileSystem.new(app.security.capabilities, scopes)
+          files.write_text(path, store.export_json)
           path.to_s
         end
       end
