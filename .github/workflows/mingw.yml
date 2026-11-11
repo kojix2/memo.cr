@@ -39,8 +39,8 @@ jobs:
           node-version: 24
 
       - name: Test editor and sidebar
-        shell: msys2 {0}
-        run: node --test spec/*_test.js
+        shell: pwsh
+        run: node --test spec/editor_test.js spec/sidebar_test.js
 
       - name: Build (UCRT64) via script
         shell: msys2 {0}
