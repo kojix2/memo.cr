@@ -1,0 +1,2 @@
+# Keep source files consistent when Git for Windows enables core.autocrlf.
+* text=auto eol=lf
