@@ -4,7 +4,7 @@ describe Memo::Store do
   it "opens the original schema and preserves existing notes and timestamps" do
     with_store do |store, _|
       Memo::DBX.db.exec("insert into notes(id, title, body, created_at, updated_at) values(?, ?, ?, ?, ?)",
-        42, "既存のメモ", "本文\n😀", "2026-01-01 00:00:00.000", "2026-06-16 12:34:56.789")
+        args: [42_i64, "既存のメモ", "本文\n😀", "2026-01-01 00:00:00.000", "2026-06-16 12:34:56.789"])
       Memo::DBX.setup
       note = store.find(42_i64)
       note.title.should eq("既存のメモ")
@@ -47,7 +47,8 @@ describe Memo::Store do
     with_store do |store, _|
       first = store.create
       second = store.create
-      Memo::DBX.db.exec("update notes set updated_at = ?", "2026-01-01 00:00:00.000")
+      # Tuple(String) triggers a Crystal 1.22.2 Linux codegen bug; bind an Array.
+      Memo::DBX.db.exec("update notes set updated_at = ?", args: ["2026-01-01 00:00:00.000"])
       store.list.map(&.id).should eq([second.id, first.id])
       store.save(Memo::SaveNote.from_json({id: first.id, title: "Updated", body: ""}.to_json))
       store.list.first.id.should eq(first.id)
