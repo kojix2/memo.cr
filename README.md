@@ -42,4 +42,22 @@ node --test spec/*_test.js
 On Linux, source `scripts/linux-env.sh` first. With a graphical session,
 `crystal run spec/support/native_smoke.cr` also tests the native UI.
 
+## CrystKit integration
+
+Memo uses CrystKit's typed IPC and reactive state for notes and settings,
+native menus and their keyboard accelerators, file and confirmation dialogs,
+scoped filesystem access for exports, application-data directories, CLI parsing,
+and window/application lifecycle events. **Cmd/Ctrl+,** opens settings.
+
+The sidebar splitter remains a DOM control because CrystKit does not provide
+an in-page splitter. It supports dragging without pointer capture, keyboard
+adjustment, and saved widths. The editor's save queue remains application logic
+so navigation and close wait for every edit to reach SQLite.
+
+Settings keep their existing JSON format, backups, corrupt-file quarantine, and
+write-error propagation. CrystKit's key-value Store uses a different format and
+logs write failures without raising them, so it cannot preserve these behaviors.
+The packaging scripts also retain dependency bundling and platform-specific
+runtime dependency lists that CrystKit's current builder does not supply.
+
 See [SECURITY.md](SECURITY.md) for security details. Licensed under MIT.
