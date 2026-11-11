@@ -1,5 +1,8 @@
 # Memo
 
+[![Build and release](https://github.com/kojix2/memo.cr/actions/workflows/ci.yml/badge.svg)](https://github.com/kojix2/memo.cr/actions/workflows/ci.yml)
+[![Lines of Code](https://img.shields.io/endpoint?url=https%3A%2F%2Ftokei.kojix2.net%2Fbadge%2Fgithub%2Fkojix2%2Fmemo.cr%2Flines)](https://tokei.kojix2.net/github/kojix2/memo.cr)
+
 A local notes app built with [Crystal](https://crystal-lang.org),
 [CrystKit](https://github.com/naqvis/crystkit), and SQLite.
 Includes autosave, a resizable sidebar, JSON export, and adjustable font size.
