@@ -26,40 +26,11 @@ module Memo
     end
 
     def self.db_url_source : String
-      if present?(ENV["MEMO_DATABASE_URL"]?)
-        return "runtime_env"
-      end
-
-      if present?(ENV["DATABASE_URL"]?)
-        return "legacy_runtime_env"
-      end
-
-      if present?(build_time_db_url)
-        return "build_env"
-      end
-
-      "default_path"
+      configured_db.try { |config| config[:source] } || "default_path"
     end
 
     def self.db_url : String
-      if env = ENV["MEMO_DATABASE_URL"]?
-        env = env.strip
-        return env unless env.empty?
-      end
-
-      # Versions through 0.0.13 used DATABASE_URL. Keep existing installations
-      # on their configured SQLite file unless the Memo-specific override wins.
-      if legacy = ENV["DATABASE_URL"]?
-        legacy = legacy.strip
-        return legacy unless legacy.empty?
-      end
-
-      if compiled = build_time_db_url
-        compiled = compiled.strip
-        return compiled unless compiled.empty?
-      end
-
-      default_db_url
+      configured_db.try { |config| config[:url] } || default_db_url
     end
 
     def self.current_db_path : String?
@@ -68,10 +39,18 @@ module Memo
       nil
     end
 
-    private def self.present?(value : String?) : Bool
-      return false unless value
-
-      !value.strip.empty?
+    private def self.configured_db
+      # Keep URL selection and its diagnostic source in the same precedence order.
+      # DATABASE_URL is the setting used by versions through 0.0.13.
+      [
+        {"runtime_env", ENV["MEMO_DATABASE_URL"]?},
+        {"legacy_runtime_env", ENV["DATABASE_URL"]?},
+        {"build_env", build_time_db_url},
+      ].each do |source, value|
+        url = value.try(&.strip)
+        return {source: source, url: url} if url && !url.empty?
+      end
+      nil
     end
 
     def self.sqlite_url(path : String) : String
