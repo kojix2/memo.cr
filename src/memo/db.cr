@@ -1,5 +1,6 @@
 require "db"
 require "sqlite3"
+require "crystkit/features/system_info"
 
 module Memo
   module DBX
@@ -14,14 +15,7 @@ module Memo
     end
 
     def self.data_dir : String
-      {% if flag?(:windows) %}
-        ENV["APPDATA"]? || ENV["USERPROFILE"]? || "."
-      {% elsif flag?(:darwin) %}
-        home = ENV["HOME"]? || "."
-        File.join(home, "Library", "Application Support")
-      {% else %}
-        ENV["XDG_DATA_HOME"]? || File.join(ENV["HOME"]? || ".", ".local", "share")
-      {% end %}
+      CrystKit::Features::SystemInfo.new.app_data_directories.data
     end
 
     def self.db_path : String
