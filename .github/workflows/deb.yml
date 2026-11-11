@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v7
@@ -29,7 +29,7 @@ jobs:
             libx11-dev libxss-dev libdbus-1-dev \
             libnotify-dev libayatana-appindicator3-dev \
             libudev-dev libsecret-1-dev libspeechd-dev \
-            pkg-config
+            pkg-config xvfb xauth
           sudo gem install --no-document fpm
 
       - uses: actions/setup-node@v7
@@ -43,11 +43,18 @@ jobs:
           crystal tool format --check src spec
           crystal spec
           node --test spec/*_test.js
+          xvfb-run -a crystal run spec/support/native_smoke.cr
 
       - name: Build Debian package
         run: |
           chmod +x build-deb.sh
           ./build-deb.sh
+
+      - name: Verify installed package
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          test "$(memo --version)" = "$(shards version .)"
+          dpkg-deb --info dist/*.deb
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Load configuration from .env
 set -a
@@ -9,6 +9,7 @@ source scripts/linux-env.sh
 VERSION="$(shards version .)"
 
 DIST_DIR="dist"
+ARCH="$(dpkg --print-architecture)"
 
 echo "Building $APP_NAME v$VERSION..."
 shards install --frozen
@@ -19,6 +20,7 @@ mkdir -p "$DIST_DIR"
 
 # Create temporary directory structure
 TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT
 mkdir -p "$TEMP_DIR/usr/bin"
 mkdir -p "$TEMP_DIR/usr/share/applications"
 mkdir -p "$TEMP_DIR/usr/share/icons/hicolor/256x256/apps"
@@ -45,7 +47,22 @@ if [ -f "resources/app_icon.png" ]; then
     cp "resources/app_icon.png" "$TEMP_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 fi
 
-# Create deb package
+# Derive versioned runtime dependencies from the executable, including libc/GMP.
+# Keep the control stub outside the staged package contents.
+METADATA_DIR="$TEMP_DIR/.metadata"
+mkdir -p "$METADATA_DIR/debian"
+printf 'Source: %s\n\nPackage: %s\nArchitecture: any\nDescription: Memo\n' \
+    "$APP_NAME" "$APP_NAME" > "$METADATA_DIR/debian/control"
+BINARY_PATH="$TEMP_DIR/usr/bin/$APP_NAME"
+dependencies="$(cd "$METADATA_DIR" && dpkg-shlibdeps -O -e "$BINARY_PATH")"
+dependencies="${dependencies#shlibs:Depends=}"
+rm -rf "$METADATA_DIR"
+IFS=',' read -r -a runtime_dependencies <<< "$dependencies"
+FPM_ARGS=()
+for dependency in "${runtime_dependencies[@]}"; do
+    FPM_ARGS+=(--depends "${dependency# }")
+done
+
 fpm -s dir -t deb \
     --name "$APP_NAME" \
     --version "$VERSION" \
@@ -53,24 +70,11 @@ fpm -s dir -t deb \
     --maintainer "$MAINTAINER" \
     --license "$LICENSE" \
     --url "$URL" \
+    --architecture "$ARCH" \
     --deb-no-default-config-files \
-    --depends "libwebkit2gtk-4.1-0" \
-    --depends "libgtk-3-0" \
-    --depends "libglib2.0-0" \
-    --depends "libsqlite3-0" \
-    --depends "libssl3" \
-    --depends "libstdc++6" \
-    --depends "libx11-6" \
-    --depends "libxss1" \
-    --depends "libnotify4" \
-    --depends "libayatana-appindicator3-1" \
-    --depends "libudev1" \
-    --depends "libsecret-1-0" \
-    --depends "libspeechd2" \
-    --package "$DIST_DIR/${APP_NAME}_${VERSION}_amd64.deb" \
+    "${FPM_ARGS[@]}" \
+    --package "$DIST_DIR/${APP_NAME}_${VERSION}_${ARCH}.deb" \
     -C "$TEMP_DIR" \
     .
 
-rm -rf "$TEMP_DIR"
-
-echo "Created: $DIST_DIR/${APP_NAME}_${VERSION}_amd64.deb"
+echo "Created: $DIST_DIR/${APP_NAME}_${VERSION}_${ARCH}.deb"
