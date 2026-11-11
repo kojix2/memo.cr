@@ -64,12 +64,18 @@ module Memo
 
       menu = CrystKit::Features::MenuBar.new
       app_menu = CrystKit::Features::Menu.new("Memo")
-      {% if flag?(:darwin) %}
-        app_menu.add_item("Quit Memo", "Cmd+Q") { app.quit }
-      {% else %}
-        app_menu.add_item("Quit Memo", "Ctrl+Q") { app.quit }
-      {% end %}
+      modifier = {% if flag?(:darwin) %} "Cmd" {% else %} "Ctrl" {% end %}
+      app_menu.add_item("Settings…", "#{modifier}+,") { app.emit("settings:open", nil) }
+      app_menu.add_separator
+      app_menu.add_item("Quit Memo", "#{modifier}+Q") { app.quit }
       menu.add(app_menu)
+      menu.menu("File") do |file|
+        file.add_item("New Note", "#{modifier}+N") { app.emit("notes:new", nil) }
+        file.add_item("Save", "#{modifier}+S") { app.emit("notes:save", nil) }
+        file.add_item("Export JSON…") { app.emit("notes:export", nil) }
+        file.add_separator
+        file.add_item("Close", "#{modifier}+W") { app.emit("app:close-requested", nil) }
+      end
       edit_menu = CrystKit::Features::Menu.new("Edit")
       {"Undo" => "undo", "Redo" => "redo", "Cut" => "cut", "Copy" => "copy", "Paste" => "paste", "Select All" => "selectAll"}.each do |label, command|
         edit_menu.add_item(label) do

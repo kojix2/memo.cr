@@ -32,6 +32,13 @@ app.command("smoke.resize", Int32) do |width|
   app.primary_window.not_nil!.size(width, 700)
   true
 end
+app.command("smoke.menu", String) do |id|
+  item = app.menu_bar.not_nil!.menus.flat_map(&.items).find do |entry|
+    entry.is_a?(CrystKit::Features::MenuItem) && entry.id == id
+  end
+  item.as(CrystKit::Features::MenuItem).action.not_nil!.call
+  true
+end
 app.primary_window.not_nil!.init(<<-'JS')
   document.addEventListener('DOMContentLoaded', async () => {
     const ipc = window.__CRYSTKIT_IPC__;
@@ -80,7 +87,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       await wait(() => window.innerWidth === 500 && width() <= 254);
       await ipc.invoke('smoke.resize', 1000);
       await wait(() => window.innerWidth === 1000 && width() === 360);
-      $('new-note').click();
+      await ipc.invoke('smoke.menu', 'new-note');
       await wait(() => !$('editor').hidden && !$('new-note').disabled);
       edit('note-title', '<script>日本語😀</script>');
       edit('note-body', 'First note\nquotes & < > 😀');
@@ -91,7 +98,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       if (!first || first.title !== '<script>日本語😀</script>') throw new Error('Navigation lost edits');
       document.querySelectorAll('.note-item')[1].click();
       await wait(() => $('note-title').value === first.title && !$('new-note').disabled);
-      $('open-settings').click();
+      await ipc.invoke('smoke.menu', 'settings…');
       await wait(() => !$('settings-page').hidden && !$('back-to-notes').disabled);
       $('editor-font-size').value = '23';
       await ipc.invoke('settings.save_sidebar_width', 370);
@@ -101,7 +108,7 @@ app.primary_window.not_nil!.init(<<-'JS')
       $('font-form').dispatchEvent(new Event('submit', { cancelable: true }));
       await wait(() => $('font-status').textContent === 'Saved');
       await wait(() => getComputedStyle(document.documentElement).getPropertyValue('--editor-font-size').trim() === '23px');
-      $('export-notes').click();
+      await ipc.invoke('smoke.menu', 'export-json…');
       await wait(() => $('export-status').textContent.startsWith('Saved to'));
       $('back-to-notes').click();
       await ipc.invoke('smoke.confirm_delete', false);

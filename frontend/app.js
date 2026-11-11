@@ -154,13 +154,6 @@
     const path = await invoke('notes.export');
     $('export-status').textContent = path ? 'Saved to ' + path : 'Export cancelled';
   }));
-  document.addEventListener('keydown', event => {
-    if (!(event.metaKey || event.ctrlKey) || event.altKey || event.isComposing) return;
-    const key = event.key.toLowerCase();
-    if (key === 's') { event.preventDefault(); action(flush); }
-    if (key === 'n') { event.preventDefault(); if (!settingsOpen) $('new-note').click(); }
-    if (key === 'q' || key === 'w') { event.preventDefault(); requestClose(); }
-  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && !composing) editor.flush().catch(showError);
   });
@@ -192,6 +185,10 @@
     return;
   }
   ipc.listen('app:close-requested', requestClose);
+  ipc.listen('notes:new', () => { if (!settingsOpen) $('new-note').click(); });
+  ipc.listen('notes:save', () => action(flush));
+  ipc.listen('notes:export', () => $('export-notes').click());
+  ipc.listen('settings:open', () => $('open-settings').click());
   let renderedFontSize;
   function renderSettings(settings) {
     const ui = settings.ui;
