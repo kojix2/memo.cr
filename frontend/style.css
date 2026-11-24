@@ -9,8 +9,8 @@ button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #a5813e; outline-offset: 2px; }
 #note-title:focus, #note-body:focus { outline: none; }
 .sidebar { flex: 0 0 var(--sidebar-width, 280px); min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-.sidebar-resizer { flex: 0 0 6px; position: relative; cursor: col-resize; touch-action: none; }
-.sidebar-resizer::before { content: ""; position: absolute; inset: 0 auto 0 2px; width: 1px; background: #e6ddb3; }
+.sidebar-resizer { flex: 0 0 6px; position: relative; background: #fefcf0; cursor: col-resize; touch-action: none; }
+.sidebar-resizer::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1px; background: #e6ddb3; }
 .sidebar-resizer:hover, .sidebar-resizer:focus-visible { background: #eee3a0; outline: none; }
 .sidebar-resizer:focus-visible::before { background: #a5813e; }
 .resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
