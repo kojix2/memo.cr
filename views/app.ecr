@@ -10,12 +10,16 @@
 <body>
   <aside id="notes-sidebar" class="sidebar" aria-label="Notes">
     <header class="sidebar-header">
-      <button id="new-note" class="primary" disabled>+ New Note</button>
-      <label class="sr-only" for="search-notes">Search titles and bodies</label>
-      <input id="search-notes" type="search" placeholder="Search notes…" autocomplete="off" disabled>
+      <div class="sidebar-actions">
+        <button id="new-note" aria-label="New note" title="New note" disabled>+</button>
+        <span id="note-count" role="status" aria-live="polite"></span>
+      </div>
+      <div class="sidebar-search">
+        <label class="sr-only" for="search-notes">Search titles and bodies</label>
+        <input id="search-notes" type="search" placeholder="Search…" autocomplete="off" disabled>
+      </div>
     </header>
-    <nav id="notes-list" class="notes-list" aria-label="Select a note"><p class="list-empty">Loading notes…</p></nav>
-    <footer><span id="note-count" role="status" aria-live="polite"></span><button id="open-settings" disabled>Settings</button></footer>
+    <nav id="notes-list" aria-label="Select a note"><p class="list-empty">Loading notes…</p></nav>
   </aside>
   <div id="sidebar-resizer" class="sidebar-resizer" role="separator" tabindex="0"
        aria-label="Resize notes sidebar" aria-controls="notes-sidebar" aria-orientation="vertical"
@@ -27,7 +31,6 @@
       <div id="editor" class="editor" hidden>
         <header class="editor-header"><label class="sr-only" for="note-title">Note title</label><input id="note-title" placeholder="Untitled" autocomplete="off"></header>
         <div class="editor-content"><label class="sr-only" for="note-body">Note body</label><textarea id="note-body" placeholder="Start writing…" spellcheck="true"></textarea></div>
-        <footer class="editor-actions"><span id="save-status" role="status" aria-live="polite"></span><button id="save-note">Save</button><button id="delete-note" class="danger">Delete</button></footer>
       </div>
     </section>
     <section id="settings-page" class="settings-page" aria-labelledby="settings-heading" hidden>
@@ -40,6 +43,13 @@
       </div>
     </section>
   </main>
+  <template id="note-delete-template">
+    <button class="note-delete" title="Delete note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>
+      </svg>
+    </button>
+  </template>
   <script><%= {{ read_file("frontend/editor.js") }} %></script>
   <script><%= {{ read_file("frontend/sidebar.js") }} %></script>
   <script><%= {{ read_file("frontend/app.js") }} %></script>

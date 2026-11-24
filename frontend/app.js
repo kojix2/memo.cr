@@ -9,23 +9,15 @@
   let timer;
   let closing = false;
   let composing = false;
-  let settingsOpen = false;
-  const sidebar = new MemoSidebar($('notes-sidebar'), $('sidebar-resizer'), {
+  const sidebarElement = $('notes-sidebar');
+  const deleteButtonTemplate = $('note-delete-template').content.firstElementChild;
+  const sidebar = new MemoSidebar(sidebarElement, $('sidebar-resizer'), {
     enabled: () => loaded && !closing,
     save: width => invoke('settings.save_sidebar_width', width),
     onError: showError
   });
+  const editor = new MemoEditor(invoke);
   let lastSaveError;
-  const editor = new MemoEditor(invoke, (text, error) => {
-    $('save-status').textContent = text;
-    if (error) {
-      lastSaveError = error.message;
-      showError(error);
-    } else if (text === 'Saved' && lastSaveError) {
-      if ($('message').textContent === lastSaveError) clearError();
-      lastSaveError = null;
-    }
-  });
 
   function showError(error) {
     $('message').textContent = error.message || String(error);
@@ -33,10 +25,10 @@
   }
   function clearError() { $('message').hidden = true; }
   function updateButtons() {
-    $('new-note').disabled = $('open-settings').disabled = busy || closing || !loaded;
+    const disabled = busy || closing || !loaded;
+    $('new-note').disabled = disabled;
     $('search-notes').disabled = closing || !loaded;
-    $('save-note').disabled = $('delete-note').disabled = busy || !editor.note;
-    document.querySelectorAll('.note-item').forEach(button => { button.disabled = busy; });
+    document.querySelectorAll('.note-item, .note-delete').forEach(button => { button.disabled = disabled; });
     $('back-to-notes').disabled = busy;
     $('export-notes').disabled = busy;
     document.querySelector('#font-form button').disabled = busy;
@@ -55,7 +47,8 @@
   }
   function renderList() {
     if (!notes) return;
-    const scrollTop = $('notes-list').scrollTop;
+    const scrollTop = sidebarElement.scrollTop;
+    const disabled = busy || closing || !loaded;
     const fragment = document.createDocumentFragment();
     const query = $('search-notes').value.trim().toLowerCase();
     // Include the editor buffer so searching never requires a successful save.
@@ -63,12 +56,15 @@
       ? { ...note, title: editor.note.title, body: editor.note.body } : note)
       .filter(note => !query || note.title.toLowerCase().includes(query) || note.body.toLowerCase().includes(query));
     for (const note of visible) {
+      const row = document.createElement('div');
+      row.className = 'note-row';
       const button = document.createElement('button');
       const active = editor.note?.id === note.id;
+      const title = note.title.trim() || 'Untitled';
       button.className = 'note-item' + (active ? ' active' : '');
       button.setAttribute('aria-current', active ? 'true' : 'false');
       for (const [className, text] of [
-        ['note-title', note.title.trim() || 'Untitled'],
+        ['note-title', title],
         ['note-preview', Array.from(note.body).slice(0, 51).join('') || 'Empty note'],
         ['note-date', note.updated_at.split(' ')[0]]
       ]) {
@@ -77,12 +73,21 @@
         span.textContent = text;
         button.appendChild(span);
       }
-      button.disabled = busy;
+      button.disabled = disabled;
       button.addEventListener('click', () => action(async () => {
         await flush();
         showNote(notes.value.find(item => item.id === note.id));
       }));
-      fragment.appendChild(button);
+      const deleteButton = deleteButtonTemplate.cloneNode(true);
+      deleteButton.setAttribute('aria-label', `Delete ${title}`);
+      deleteButton.disabled = disabled;
+      deleteButton.addEventListener('click', () => action(async () => {
+        await flush();
+        const next = await invoke('notes.delete', note.id);
+        if (editor.note?.id === note.id && (!next || next.id !== note.id)) showNote(next);
+      }));
+      row.append(button, deleteButton);
+      fragment.appendChild(row);
     }
     if (!visible.length) {
       const empty = document.createElement('p');
@@ -91,12 +96,12 @@
       fragment.appendChild(empty);
     }
     $('notes-list').replaceChildren(fragment);
-    $('notes-list').scrollTop = scrollTop;
+    sidebarElement.scrollTop = scrollTop;
     const total = notes.value.length;
     $('note-count').textContent = `${query ? visible.length + ' of ' : ''}${total} ${total === 1 ? 'note' : 'notes'}`;
   }
   $('search-notes').addEventListener('input', () => {
-    $('notes-list').scrollTop = 0;
+    sidebarElement.scrollTop = 0;
     renderList();
   });
   $('search-notes').addEventListener('keydown', event => {
@@ -111,19 +116,23 @@
     $('editor').hidden = !note;
     $('note-title').value = note?.title || '';
     $('note-body').value = note?.body || '';
-    $('save-status').textContent = note ? 'Saved' : '';
     renderList();
   }
   async function flush() {
     if (composing) throw new Error('Finish typing before continuing.');
-    await editor.flush();
+    try {
+      await editor.flush();
+    } catch (error) {
+      lastSaveError = error.message;
+      throw error;
+    }
+    if (lastSaveError && $('message').textContent === lastSaveError) clearError();
+    lastSaveError = null;
   }
   function scheduleSave() {
     clearTimeout(timer);
     if (composing) return;
-    timer = setTimeout(() => {
-      editor.flush().catch(showError);
-    }, 800);
+    timer = setTimeout(() => flush().catch(showError), 800);
   }
   for (const input of [$('note-title'), $('note-body')]) {
     input.addEventListener('input', () => {
@@ -141,29 +150,23 @@
     showNote(note);
     $('note-body').focus();
   }));
-  $('save-note').addEventListener('click', () => action(flush));
-  $('delete-note').addEventListener('click', () => action(async () => {
-    await flush();
-    const id = editor.note.id;
-    const next = await invoke('notes.delete', id);
-    if (!next || next.id !== id) showNote(next);
-  }));
-  $('open-settings').addEventListener('click', () => action(async () => {
-    await flush();
-    const info = await invoke('app.info');
-    const fragment = document.createDocumentFragment();
-    for (const [label, value] of [['Version', info.version], ['Database', info.db_path || `Configured by ${info.db_url_source}`], ['Notes', info.note_count], ['Source', info.repository_url]]) {
-      const dt = document.createElement('dt'); dt.textContent = label;
-      const dd = document.createElement('dd'); dd.textContent = value;
-      fragment.append(dt, dd);
-    }
-    $('app-info').replaceChildren(fragment);
-    settingsOpen = true;
-    $('notes-page').hidden = true;
-    $('settings-page').hidden = false;
-  }));
+  function openSettings() {
+    if (!loaded) return;
+    return action(async () => {
+      await flush();
+      const info = await invoke('app.info');
+      const fragment = document.createDocumentFragment();
+      for (const [label, value] of [['Version', info.version], ['Database', info.db_path || `Configured by ${info.db_url_source}`], ['Notes', info.note_count], ['Source', info.repository_url]]) {
+        const dt = document.createElement('dt'); dt.textContent = label;
+        const dd = document.createElement('dd'); dd.textContent = value;
+        fragment.append(dt, dd);
+      }
+      $('app-info').replaceChildren(fragment);
+      $('notes-page').hidden = true;
+      $('settings-page').hidden = false;
+    });
+  }
   $('back-to-notes').addEventListener('click', () => {
-    settingsOpen = false;
     $('settings-page').hidden = true;
     $('notes-page').hidden = false;
   });
@@ -183,7 +186,7 @@
     $('export-status').textContent = path ? 'Saved to ' + path : 'Export cancelled';
   }));
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && !composing) editor.flush().catch(showError);
+    if (document.hidden && !composing) flush().catch(showError);
   });
   async function requestClose() {
     if (closing) return;
@@ -195,14 +198,12 @@
       while (busy) await new Promise(resolve => setTimeout(resolve, 20));
       busy = true;
       updateButtons();
-      $('note-title').readOnly = $('note-body').readOnly = true;
       await sidebar.flush();
       await flush();
       await invoke('app.close');
     } catch (error) {
       showError(error);
     } finally {
-      $('note-title').readOnly = $('note-body').readOnly = false;
       closing = false;
       busy = false;
       updateButtons();
@@ -213,10 +214,10 @@
     return;
   }
   ipc.listen('app:close-requested', requestClose);
-  ipc.listen('notes:new', () => { if (!settingsOpen) $('new-note').click(); });
+  ipc.listen('notes:new', () => { if ($('settings-page').hidden) $('new-note').click(); });
   ipc.listen('notes:save', () => action(flush));
   ipc.listen('notes:export', () => $('export-notes').click());
-  ipc.listen('settings:open', () => $('open-settings').click());
+  ipc.listen('settings:open', openSettings);
   let renderedFontSize;
   function renderSettings(settings) {
     const ui = settings.ui;

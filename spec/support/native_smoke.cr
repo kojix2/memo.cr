@@ -128,7 +128,7 @@ window.init(<<-'JS')
       await check('Native Escape restores all notes', search.value === '' && count() === 2);
       edit('note-body', 'Simulated failing save');
       edit('search-notes', 'simulated');
-      $('save-note').click();
+      await ipc.invoke('smoke.menu', 'save');
       await wait(() => !$('message').hidden && $('message').textContent.includes('Simulated database write failure') && !$('new-note').disabled);
       await check('Native search includes edits after a failed save', count() === 1 && $('note-body').value === 'Simulated failing save');
       const other = (await ipc.state('notes')).value.find(n => n.id !== first.id);
@@ -147,8 +147,8 @@ window.init(<<-'JS')
       document.querySelector('.note-item').click();
       await wait(() => $('note-title').value === first.title && !$('new-note').disabled);
       await check('Native result selection opens the matching body', $('note-body').value === searchableBody && count() === 1);
-      $('save-note').click();
-      await wait(() => !$('save-note').disabled);
+      await ipc.invoke('smoke.menu', 'save');
+      await wait(() => !$('new-note').disabled);
       await check('Native save preserves the active search', search.value === '日本語😀' && count() === 1);
       edit('search-notes', '   ');
       await check('Native whitespace search shows all notes', count() === 2);
@@ -169,13 +169,13 @@ window.init(<<-'JS')
       await ipc.invoke('smoke.confirm_delete', false);
       const cancelledTitle = $('note-title').value;
       const cancelledBody = $('note-body').value;
-      $('delete-note').click();
-      await wait(async () => (await ipc.invoke('smoke.confirm_count')) === 1 && !$('delete-note').disabled);
+      document.querySelector('.note-item.active').parentElement.querySelector('.note-delete').click();
+      await wait(async () => (await ipc.invoke('smoke.confirm_count')) === 1 && !$('new-note').disabled);
       if (document.querySelectorAll('.note-item').length !== 2 || $('note-title').value !== cancelledTitle || $('note-body').value !== cancelledBody) {
         throw new Error('Cancelling delete changed the note');
       }
       await ipc.invoke('smoke.confirm_delete', true);
-      $('delete-note').click();
+      document.querySelector('.note-item.active').parentElement.querySelector('.note-delete').click();
       await wait(() => document.querySelectorAll('.note-item').length === 1 && !$('new-note').disabled);
       edit('note-body', 'Simulated failing save');
       await ipc.invoke('smoke.native_close');
