@@ -6,7 +6,7 @@ shards:
 
   crystkit:
     git: https://github.com/naqvis/crystkit.git
-    version: 1.0.0+git.commit.e461e6d51ef2a5ddef886f1c94a41b0433e011be
+    version: 1.0.0+git.commit.a75f839967b5f3e877aa2a42f5cacf4fb8295fd5
 
   db:
     git: https://github.com/crystal-lang/crystal-db.git
@@ -55,3 +55,4 @@ shards:
   webview:
     git: https://github.com/naqvis/webview.git
     version: 0.2.6
+
