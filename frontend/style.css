@@ -19,7 +19,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 #search-notes { display: block; width: 100%; min-width: 0; margin-top: 14px; padding: 8px; border: 1px solid #d9ce94; border-radius: 6px; background: #fefcf0; font-size: 13px; }
 .notes-list { overflow: auto; flex: 1; }
 .note-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid #eae3bc; border-radius: 0; padding: 18px 20px; }
-.note-item.active { background: #eee3a0; box-shadow: inset -3px 0 #c4a45d; }
+.note-item.active { background: #eee3a0; }
 .note-title, .note-preview, .note-date { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-title { font-size: 15px; font-weight: 600; }
 .note-preview { font-size: 12px; color: #998971; margin-top: 6px; }
