@@ -25,10 +25,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   overflow: hidden auto;
   scroll-padding-top: var(--sidebar-header-height);
 }
-.sidebar-resizer { flex: 0 0 6px; position: relative; background: var(--paper); cursor: col-resize; touch-action: none; }
-.sidebar-resizer::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1px; background: #e6ddb3; }
+.sidebar-resizer { flex: 0 0 6px; background: var(--paper); cursor: col-resize; touch-action: none; }
 .sidebar-resizer:hover, .sidebar-resizer:focus-visible { background: #eee3a0; outline: none; }
-.sidebar-resizer:focus-visible::before { background: #a5813e; }
 .resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
 .sidebar-header {
   position: sticky;
