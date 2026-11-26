@@ -62,11 +62,6 @@ module Memo
       end
       app.command("app.ready") do
         {% if flag?(:readme_screenshot) %}
-          {% if flag?(:win32) %}
-            app.primary_window.try do |window|
-              window.dispatch { window.title = "Memo" }
-            end
-          {% end %}
           app.show_window("main")
         {% end %}
         @frontend_ready = true
@@ -109,10 +104,7 @@ module Memo
       menu.add(edit_menu)
       app.menu_bar = menu
 
-      # WebView2 may briefly show an untitled native window during creation.
-      # Keep it untitled for capture until the notes are ready.
-      title = {{ flag?(:readme_screenshot) && flag?(:win32) ? "" : "Memo" }}
-      window = app.window(title: title, width: 1000, height: 700,
+      window = app.window(title: "Memo", width: 1000, height: 700,
         label: "main", debug: @debug, html: frontend, visible: {{ !flag?(:readme_screenshot) }})
       window.on_close { request_close(app) }
       app.on_before_quit { request_close(app) }
