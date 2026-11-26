@@ -40,5 +40,10 @@ if [[ "${MEMO_TEST_CLIPBOARD:-0}" == 1 ]]; then
 fi
 # Static libcrypto uses BCryptGenRandom. Keep bcrypt after OpenSSL because
 # Crystal places custom link flags before its own library flags.
-shards build --release --no-debug --static \
-  --link-flags="-Wl,--subsystem,windows $link_flags -lssl -lcrypto -lbcrypt"
+release_link_flags="-Wl,--subsystem,windows $link_flags -lssl -lcrypto -lbcrypt"
+if [[ "${1:-}" == "--readme-screenshot" ]]; then
+    crystal build --release --no-debug --static -Dreadme_screenshot scripts/readme-screenshot.cr -o memo.exe \
+      --link-flags="$release_link_flags"
+else
+    shards build --release --no-debug --static --link-flags="$release_link_flags"
+fi

@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/screenshot.yml'
+      - 'build-mingw.sh'
+      - 'scripts/linux-env.sh'
       - 'scripts/readme-screenshot.cr'
       - 'src/**'
       - 'frontend/**'
@@ -18,26 +20,86 @@ permissions:
 
 jobs:
   capture:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos
+            runner: macos-latest
+            app: memo
+          - os: ubuntu
+            runner: ubuntu-26.04
+            app: memo
+          - os: windows
+            runner: windows-latest
+            app: memo.exe
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: crystal-lang/install-crystal@v1
-      - name: Build Memo with the screenshot fixture
+        if: matrix.os != 'windows'
+
+      - name: Install Ubuntu build and screenshot dependencies
+        if: matrix.os == 'ubuntu'
         run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libsqlite3-dev libssl-dev libx11-dev libxss-dev libdbus-1-dev libnotify-dev \
+            libayatana-appindicator3-dev libudev-dev libsecret-1-dev libspeechd-dev \
+            xvfb xauth imagemagick openbox wmctrl x11-utils fonts-noto-cjk
+      - name: Build the screenshot app on macOS and Ubuntu
+        if: matrix.os != 'windows'
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == Linux ]]; then source scripts/linux-env.sh; fi
           shards install --frozen
           crystal build -Dreadme_screenshot scripts/readme-screenshot.cr -o memo
+
+      - uses: msys2/setup-msys2@v2
+        if: matrix.os == 'windows'
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git make unzip curl
+            mingw-w64-ucrt-x86_64-crystal mingw-w64-ucrt-x86_64-shards
+            mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-pkg-config
+            mingw-w64-ucrt-x86_64-openssl mingw-w64-ucrt-x86_64-sqlite3
+      - name: Build the screenshot app on Windows
+        if: matrix.os == 'windows'
+        shell: msys2 {0}
+        run: bash build-mingw.sh --readme-screenshot
+      - name: Ensure WebView2 Runtime is installed
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $client = 'Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $keys = "HKLM:\SOFTWARE\WOW6432Node\$client", "HKLM:\SOFTWARE\$client", "HKCU:\SOFTWARE\$client"
+          $version = Get-ItemPropertyValue -Path $keys -Name pv -ErrorAction SilentlyContinue |
+            Where-Object { $_ -and $_ -ne '0.0.0.0' }
+          if (-not $version) {
+            $installer = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+            Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $installer
+            $signature = Get-AuthenticodeSignature $installer
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') {
+              throw 'Invalid Microsoft WebView2 installer signature'
+            }
+            $setup = Start-Process $installer -ArgumentList '/silent', '/install' -Wait -PassThru
+            if ($setup.ExitCode -ne 0) { throw "WebView2 installer exited with $($setup.ExitCode)" }
+          }
+
       - name: Capture the Memo window
         uses: kojix2/window-screenshot-action@main
         with:
-          os: macos
-          app-names: memo
-          output-files: memo-macos.png
+          os: ${{ matrix.os }}
+          app-names: ${{ matrix.app }}
+          output-files: memo-${{ matrix.os }}.png
       - uses: actions/upload-artifact@v7
         with:
-          name: memo-screenshot
-          path: memo-macos.png
+          name: memo-screenshot-${{ matrix.os }}
+          path: memo-${{ matrix.os }}.png
           if-no-files-found: error
 
   publish:
@@ -51,8 +113,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          name: memo-screenshot
-          path: ${{ runner.temp }}/memo-screenshot
+          pattern: memo-screenshot-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/memo-screenshots
       - name: Update the screenshots branch
         run: |
           git config user.name 'github-actions[bot]'
@@ -63,9 +126,11 @@ jobs:
           else
             git switch --orphan screenshots
           fi
-          cp "$RUNNER_TEMP/memo-screenshot/memo-macos.png" .
-          git add -- memo-macos.png
+          for os in macos ubuntu windows; do
+            cp "$RUNNER_TEMP/memo-screenshots/memo-$os.png" .
+            git add -- "memo-$os.png"
+          done
           if ! git diff --cached --quiet; then
-            git commit -m 'Update README screenshot'
+            git commit -m 'Update README screenshots'
             git push origin HEAD:refs/heads/screenshots
           fi

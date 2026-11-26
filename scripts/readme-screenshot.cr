@@ -1,6 +1,6 @@
 # Build with -Dreadme_screenshot. The normal Memo target never loads this fixture.
-{% unless flag?(:darwin) && flag?(:readme_screenshot) %}
-  {% raise "This fixture requires a macOS build with -Dreadme_screenshot" %}
+{% unless flag?(:readme_screenshot) %}
+  {% raise "This fixture requires -Dreadme_screenshot" %}
 {% end %}
 
 require "random/secure"
