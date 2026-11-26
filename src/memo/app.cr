@@ -61,7 +61,7 @@ module Memo
         end
       end
       app.command("app.ready") do
-        {% if flag?(:readme_screenshot) %}
+        {% if flag?(:readme_screenshot) && !flag?(:win32) %}
           app.show_window("main")
         {% end %}
         @frontend_ready = true
@@ -105,7 +105,7 @@ module Memo
       app.menu_bar = menu
 
       window = app.window(title: "Memo", width: 1000, height: 700,
-        label: "main", debug: @debug, html: frontend, visible: {{ !flag?(:readme_screenshot) }})
+        label: "main", debug: @debug, html: frontend, visible: {{ !flag?(:readme_screenshot) || flag?(:win32) }})
       window.on_close { request_close(app) }
       app.on_before_quit { request_close(app) }
       app

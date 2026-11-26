@@ -8,7 +8,6 @@ on:
       - 'build-mingw.sh'
       - 'scripts/linux-env.sh'
       - 'scripts/readme-screenshot.cr'
-      - 'scripts/readme-screenshot-webview.cpp'
       - 'src/**'
       - 'frontend/**'
       - 'views/**'
@@ -97,6 +96,23 @@ jobs:
           os: ${{ matrix.os }}
           app-names: ${{ matrix.app }}
           output-files: memo-${{ matrix.os }}.png
+          capture-delay: ${{ matrix.os == 'windows' && '10' || '1' }}
+      - name: Reject an unrendered Windows screenshot
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $image = [System.Drawing.Bitmap]::new((Resolve-Path memo-windows.png).Path)
+          try {
+            $y = [int]($image.Height / 2)
+            $sidebar = $image.GetPixel([int]($image.Width / 8), $y)
+            $editor = $image.GetPixel([int]($image.Width * 3 / 4), $y)
+            if ($image.Width -lt 900 -or $sidebar.ToArgb() -eq $editor.ToArgb()) {
+              throw "Memo did not render its sidebar and editor ($($image.Width)x$($image.Height))."
+            }
+          } finally {
+            $image.Dispose()
+          }
       - uses: actions/upload-artifact@v7
         with:
           name: memo-screenshot-${{ matrix.os }}

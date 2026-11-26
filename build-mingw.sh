@@ -42,12 +42,8 @@ fi
 # Crystal places custom link flags before its own library flags.
 release_link_flags="-Wl,--subsystem,windows $link_flags -lssl -lcrypto -lbcrypt"
 if [[ "${1:-}" == "--readme-screenshot" ]]; then
-    g++ -std=c++14 -DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 \
-      -I_wv2/build/native/include -Ilib/webview/ext \
-      -c scripts/readme-screenshot-webview.cpp -o _wv2/webview-screenshot.o
-    ar rcs _wv2/libwebview.a _wv2/webview-screenshot.o
     crystal build --release --no-debug --static -Dreadme_screenshot scripts/readme-screenshot.cr -o memo.exe \
-      --link-flags="-L\"$(cygpath -am _wv2)\" $release_link_flags"
+      --link-flags="$release_link_flags"
 else
     shards build --release --no-debug --static --link-flags="$release_link_flags"
 fi
