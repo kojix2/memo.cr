@@ -2,6 +2,7 @@ require "log"
 require "ecr"
 require "crystkit"
 require "./commands"
+require "./edit_menu"
 
 module Memo
   class App
@@ -81,9 +82,18 @@ module Memo
         file.add_item("Close", "#{modifier}+W") { app.emit("app:close-requested", nil) }
       end
       edit_menu = CrystKit::Features::Menu.new("Edit")
-      {"Undo" => "undo", "Redo" => "redo", "Cut" => "cut", "Copy" => "copy", "Paste" => "paste", "Select All" => "selectAll"}.each do |label, command|
-        edit_menu.add_item(label) do
-          app.primary_window.try(&.eval("document.execCommand(#{command.to_json})"))
+      {
+        {"Undo", "undo", "Z"},
+        {"Redo", "redo", "Shift+Z"},
+        {"Cut", "cut", "X"},
+        {"Copy", "copy", "C"},
+        {"Paste", "paste", "V"},
+        {"Select All", "selectAll", "A"},
+      }.each do |label, command, key|
+        # Linux and Windows WebViews handle editing shortcuts directly.
+        accelerator = {% if flag?(:darwin) %} "#{modifier}+#{key}" {% else %} nil {% end %}
+        edit_menu.add_item(label, accelerator) do
+          app.primary_window.try { |window| EditMenu.perform(window, command) }
         end
       end
       menu.add(edit_menu)

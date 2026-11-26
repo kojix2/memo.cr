@@ -48,3 +48,16 @@ search with unsaved edits and failed saves, settings, export, and native close,
 including save failures. Both GUI suites use
 deterministic responses at the native dialog boundary; they do not automate OS
 dialog windows.
+
+The clipboard checks cover cut, copy, paste, undo, redo, and saving Unicode
+text. On macOS they dispatch native menu key equivalents without Accessibility
+permission and restore the clipboard after the run. On Linux and Windows they
+invoke the Edit menu actions. Opt in from a disposable desktop session because
+the checks replace its clipboard:
+
+```sh
+# Linux, after sourcing scripts/linux-env.sh
+MEMO_TEST_CLIPBOARD=1 xvfb-run -a crystal run spec/support/native_smoke.cr
+# Windows, in MSYS2 UCRT64 with WebView2 Runtime installed
+MEMO_TEST_CLIPBOARD=1 bash build-mingw.sh
+```

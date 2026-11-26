@@ -5,6 +5,7 @@ require "random/secure"
 require "../../src/memo/app"
 
 require "./dialog_provider"
+require "./native_shortcuts"
 
 root = File.join(Dir.tempdir, "memo-native-smoke-#{Random::Secure.hex(8)}")
 Dir.mkdir_p(root)
@@ -43,6 +44,20 @@ app.command("smoke.menu", String) do |id|
   action.call
   true
 end
+# Outside macOS, opt in only in a disposable desktop session. Copy and cut
+# replace that session's clipboard.
+app.command("smoke.clipboard_mode") do
+  {% if flag?(:darwin) %}
+    "shortcuts"
+  {% else %}
+    "menu" if ENV["MEMO_TEST_CLIPBOARD"]? == "1"
+  {% end %}
+end
+{% if flag?(:darwin) %}
+  app.command("smoke.shortcut", String) do |key|
+    NativeSmokeShortcuts.press(key)
+  end
+{% end %}
 window.init(<<-'JS')
   document.addEventListener('DOMContentLoaded', async () => {
     const ipc = window.__CRYSTKIT_IPC__;
@@ -99,6 +114,47 @@ window.init(<<-'JS')
       await wait(() => !$('editor').hidden && !$('new-note').disabled);
       $('note-body').focus();
       if (getComputedStyle($('note-body')).outlineStyle !== 'none') throw new Error('Editor still has a focus frame');
+      const clipboardMode = await ipc.invoke('smoke.clipboard_mode');
+      if (clipboardMode) {
+        const editCommand = async (id, key) => {
+          if (clipboardMode === 'shortcuts') {
+            await check('Native shortcut: ' + id, await ipc.invoke('smoke.shortcut', key));
+          } else {
+            await ipc.invoke('smoke.menu', id);
+          }
+        };
+        const clipboardText = 'Copy and paste 日本語😀 ' + String(Math.random()).slice(2);
+        edit('note-body', clipboardText);
+        await editCommand('select-all', 'a');
+        await wait(() => $('note-body').selectionStart === 0 && $('note-body').selectionEnd === clipboardText.length);
+        // The edit command is asynchronous. Wait for copy to finish before
+        // moving focus, using the browser's native clipboard event.
+        let copied = false;
+        $('note-body').addEventListener('copy', () => { copied = true; }, { once: true });
+        await editCommand('copy', 'c');
+        await wait(() => copied);
+        $('note-title').focus();
+        $('note-title').select();
+        await editCommand('paste', 'v');
+        await wait(() => $('note-title').value === clipboardText);
+        $('note-body').focus();
+        $('note-body').setSelectionRange(0, clipboardText.length);
+        await editCommand('cut', 'x');
+        await wait(() => $('note-body').value === '');
+        await editCommand('undo', 'z');
+        await wait(() => $('note-body').value === clipboardText);
+        await editCommand('redo', 'shift+z');
+        await wait(() => $('note-body').value === '');
+        await editCommand('paste', 'v');
+        await wait(() => $('note-body').value === clipboardText);
+        $('search-notes').focus();
+        await editCommand('paste', 'v');
+        await wait(() => $('search-notes').value === clipboardText && document.querySelectorAll('.note-item').length === 1);
+        edit('search-notes', '');
+        await ipc.invoke('smoke.menu', 'save');
+        await wait(async () => !$('new-note').disabled && (await ipc.state('notes')).value.some(n => n.title === clipboardText && n.body === clipboardText));
+        await check('Native clipboard edits are saved through input events', true);
+      }
       edit('note-title', '<script>日本語😀</script>');
       edit('note-body', 'First note\nquotes & < > 😀');
       $('new-note').click();
@@ -196,6 +252,9 @@ Thread.new do
   STDERR.puts "Native smoke timed out"
   Process.exit(1)
 end
+{% if flag?(:darwin) %}
+  clipboard = NativeSmokeShortcuts.snapshot_clipboard
+{% end %}
 begin
   app.run
   raise result unless result == "ok"
@@ -209,8 +268,11 @@ begin
   raise "Settings did not persist" unless size == 23
   restored_width = Memo::Settings.new(File.join(root, "settings.json")).sidebar_width_px
   raise "Sidebar width did not persist" unless restored_width == 360
-  puts "Native smoke passed: title/body search with unsaved edits and failed saves, sidebar resize without capture and persistence, native menus, reactive settings, IPC, Unicode, navigation saves, export, confirmed and cancelled delete, failed close recovery, and close flush"
+  puts "Native smoke passed: editing shortcuts and clipboard persistence, title/body search with unsaved edits and failed saves, sidebar resize without capture and persistence, native menus, reactive settings, IPC, Unicode, navigation saves, export, confirmed and cancelled delete, failed close recovery, and close flush"
 ensure
+  {% if flag?(:darwin) %}
+    NativeSmokeShortcuts.restore_clipboard(clipboard)
+  {% end %}
   Memo::DBX.close
   FileUtils.rm_rf(root)
 end

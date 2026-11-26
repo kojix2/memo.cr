@@ -24,6 +24,10 @@ bin/memo
 | Cmd/Ctrl+N | New note |
 | Cmd/Ctrl+S | Save |
 | Cmd/Ctrl+, | Settings |
+| Cmd/Ctrl+X / C / V | Cut / Copy / Paste |
+| Cmd/Ctrl+A | Select all |
+| Cmd/Ctrl+Z | Undo |
+| Cmd/Ctrl+Shift+Z | Redo |
 
 Use the sidebar search to filter titles and full note bodies by a case-insensitive
 substring. Clear the search field or press Escape in it to show all notes.

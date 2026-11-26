@@ -95,7 +95,7 @@ jobs:
           crystal tool format --check src spec
           crystal spec
           node --test spec/*_test.js
-          xvfb-run -a crystal run spec/support/native_smoke.cr
+          MEMO_TEST_CLIPBOARD=1 xvfb-run -a crystal run spec/support/native_smoke.cr
 
       - name: Build Debian package
         run: |
