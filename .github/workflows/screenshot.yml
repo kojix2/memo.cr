@@ -1,10 +1,16 @@
-name: README screenshots
+name: README screenshot
 
 on:
-  workflow_run:
-    workflows: [Build and release]
+  push:
     branches: [main]
-    types: [completed]
+    paths:
+      - '.github/workflows/screenshot.yml'
+      - 'scripts/readme-screenshot.cr'
+      - 'src/**'
+      - 'frontend/**'
+      - 'views/**'
+      - 'shard.yml'
+      - 'shard.lock'
   workflow_dispatch:
 
 permissions:
@@ -12,86 +18,30 @@ permissions:
 
 jobs:
   capture:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
-    runs-on: ${{ matrix.runner }}
-    permissions:
-      actions: read
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu
-            runner: ubuntu-26.04
-            artifact: memo-debian
-            app: memo
-          - os: windows
-            runner: windows-latest
-            artifact: memo-windows-ucrt64
-            app: memo.exe
-          - os: macos
-            runner: macos-latest
-            artifact: memo-macos
-            app: Memo.app/Contents/MacOS/memo
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
-      - uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.artifact }}
-          path: packages
-          github-token: ${{ github.token }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Install Memo and screenshot tools on Ubuntu
-        if: matrix.os == 'ubuntu'
+      - uses: crystal-lang/install-crystal@v1
+      - name: Build Memo with the screenshot fixture
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ./packages/*.deb xvfb xauth imagemagick openbox wmctrl fonts-noto-cjk
-          cp /usr/bin/memo ./memo
-
-      - name: Extract Memo from the macOS disk image
-        if: matrix.os == 'macos'
-        run: |
-          mount_dir=$(mktemp -d)
-          hdiutil attach packages/*.dmg -readonly -nobrowse -mountpoint "$mount_dir"
-          trap 'hdiutil detach "$mount_dir"' EXIT
-          ditto "$mount_dir/Memo.app" Memo.app
-
-      - name: Prepare Memo and WebView2 on Windows
-        if: matrix.os == 'windows'
-        shell: pwsh
-        run: |
-          $setup = (Get-ChildItem packages/memo_*_ucrt64_setup.exe).FullName
-          $installer = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
-          if ($installer.ExitCode -ne 0) { throw "Memo installer exited with $($installer.ExitCode)" }
-          Copy-Item packages/memo_*_ucrt64.exe memo.exe
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.x'
-      - name: Seed a database with sample notes
-        run: python scripts/screenshot-fixture.py
-
+          shards install --frozen
+          crystal build -Dreadme_screenshot scripts/readme-screenshot.cr -o memo
       - name: Capture the Memo window
         uses: kojix2/window-screenshot-action@main
         with:
-          os: ${{ matrix.os }}
-          app-names: ${{ matrix.app }}
-          output-files: memo-${{ matrix.os }}.png
-
+          os: macos
+          app-names: memo
+          output-files: memo-macos.png
       - uses: actions/upload-artifact@v7
         with:
-          name: screenshot-${{ matrix.os }}
-          path: memo-${{ matrix.os }}.png
+          name: memo-screenshot
+          path: memo-macos.png
           if-no-files-found: error
 
   publish:
+    if: github.ref == 'refs/heads/main'
     needs: capture
     runs-on: ubuntu-latest
     concurrency: readme-screenshots
@@ -101,9 +51,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
-          pattern: screenshot-*
-          path: ${{ runner.temp }}/memo-screenshots
-          merge-multiple: true
+          name: memo-screenshot
+          path: ${{ runner.temp }}/memo-screenshot
       - name: Update the screenshots branch
         run: |
           git config user.name 'github-actions[bot]'
@@ -114,11 +63,9 @@ jobs:
           else
             git switch --orphan screenshots
           fi
-          for os in ubuntu windows macos; do
-            cp "$RUNNER_TEMP/memo-screenshots/memo-$os.png" .
-            git add -- "memo-$os.png"
-          done
+          cp "$RUNNER_TEMP/memo-screenshot/memo-macos.png" .
+          git add -- memo-macos.png
           if ! git diff --cached --quiet; then
-            git commit -m 'Update README screenshots'
+            git commit -m 'Update README screenshot'
             git push origin HEAD:refs/heads/screenshots
           fi

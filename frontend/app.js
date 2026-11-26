@@ -232,7 +232,6 @@
   }
   (async () => {
     try {
-      await invoke('app.ready');
       const [noteState, settings] = await Promise.all([ipc.state('notes'), ipc.state('settings')]);
       notes = noteState;
       notes.subscribe(renderList);
@@ -243,6 +242,7 @@
       loaded = true;
       showNote(notes.value[0] || null);
       updateButtons();
+      await invoke('app.ready');
     } catch (error) { showError(error); }
   })();
 })();

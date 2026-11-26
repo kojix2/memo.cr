@@ -7,14 +7,12 @@ A local notes app built with [Crystal](https://crystal-lang.org),
 [CrystKit](https://github.com/naqvis/crystkit), and SQLite.
 Includes autosave, title and body search, a resizable sidebar, JSON export, and adjustable font size.
 
-## Screenshots
+## Screenshot
 
-| Ubuntu | Windows | macOS |
-| --- | --- | --- |
-| ![Memo on Ubuntu](https://raw.githubusercontent.com/kojix2/memo.cr/refs/heads/screenshots/memo-ubuntu.png) | ![Memo on Windows](https://raw.githubusercontent.com/kojix2/memo.cr/refs/heads/screenshots/memo-windows.png) | ![Memo on macOS](https://raw.githubusercontent.com/kojix2/memo.cr/refs/heads/screenshots/memo-macos.png) |
+![Memo on macOS with sample diary entries](https://raw.githubusercontent.com/kojix2/memo.cr/refs/heads/screenshots/memo-macos.png)
 
-The [screenshot workflow](.github/workflows/screenshot.yml) refreshes these images
-with sample notes after a successful build on `main`.
+The [screenshot workflow](.github/workflows/screenshot.yml) builds Memo with
+sample notes and captures its window on macOS.
 
 ## Build and run
 

@@ -60,7 +60,12 @@ module Memo
           path.to_s
         end
       end
-      app.command("app.ready") { @frontend_ready = true }
+      app.command("app.ready") do
+        {% if flag?(:readme_screenshot) %}
+          app.show_window("main")
+        {% end %}
+        @frontend_ready = true
+      end
       app.command("app.close") do
         @allow_close = true
         app.quit
@@ -100,7 +105,7 @@ module Memo
       app.menu_bar = menu
 
       window = app.window(title: "Memo", width: 1000, height: 700,
-        label: "main", debug: @debug, html: frontend)
+        label: "main", debug: @debug, html: frontend, visible: {{ !flag?(:readme_screenshot) }})
       window.on_close { request_close(app) }
       app.on_before_quit { request_close(app) }
       app
