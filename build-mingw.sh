@@ -38,5 +38,7 @@ fi
 if [[ "${MEMO_TEST_CLIPBOARD:-0}" == 1 ]]; then
     crystal run spec/support/native_smoke.cr --link-flags="$link_flags"
 fi
+# Static libcrypto uses BCryptGenRandom. Keep bcrypt after OpenSSL because
+# Crystal places custom link flags before its own library flags.
 shards build --release --no-debug --static \
-  --link-flags="-Wl,--subsystem,windows $link_flags"
+  --link-flags="-Wl,--subsystem,windows $link_flags -lssl -lcrypto -lbcrypt"
