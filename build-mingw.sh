@@ -23,12 +23,14 @@ export CXXFLAGS="-DWEBVIEW_EDGE=1 -DWEBVIEW_BUILD_SHARED=1 -std=c++14"
 # Dependencies
 shards install --frozen --without-development
 
-# Link directory for webview ext
-LINKDIR="$(pwd)/lib/webview/ext"; command -v cygpath >/dev/null 2>&1 && LINKDIR="$(cygpath -m "$LINKDIR")"
-
 # Build
 g++ -std=c++14 -I_wv2/build/native/include -c src/memo/webview2_edit.cpp -o _wv2/memo_webview2_edit.o
-link_flags="_wv2/memo_webview2_edit.o -L $LINKDIR -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
+# Keep forward slashes in Crystal's linker flags: GCC treats backslashes as
+# escapes when Crystal writes the flags to a response file.
+webview_dir="$(cygpath -am lib/webview/ext)"
+edit_object="$(cygpath -am _wv2/memo_webview2_edit.o)"
+export MSYS2_ARG_CONV_EXCL='--link-flags='
+link_flags="\"$edit_object\" -L\"$webview_dir\" -Wl,--start-group -lwebview -lstdc++ -Wl,--end-group -lole32 -lcomctl32 -loleaut32 -luuid -lgdi32 -lshlwapi -lversion"
 if [[ "${MEMO_RUN_TESTS:-0}" == 1 ]]; then
     crystal tool format --check src spec
     crystal spec --link-flags="$link_flags"
