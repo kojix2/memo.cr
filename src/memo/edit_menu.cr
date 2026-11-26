@@ -29,7 +29,7 @@ module Memo::EditMenu
             parameters = {type: "rawKeyDown", commands: [command.camelcase]}.to_json
             NativeDesktop::Platform::Windows::StringHelpers.with_utf16_bytes(parameters) do |wide|
               result = LibWebView2Editing.memo_webview2_edit(controller, wide)
-              Log.warn { "WebView2 rejected editing command #{command} (#{result})" } if result < 0
+              Log.warn { "Could not submit WebView2 editing command #{command} (#{result})" } if result < 0
             end
           {% end %}
         end
